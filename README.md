@@ -1,5 +1,10 @@
 # VendLog
 
+> **⚠️ AI-generated software.** This entire project (all source code, tests, and
+> documentation, including this README) was written by an AI assistant (GitHub Copilot) at
+> the request of the repository owner. It has been tested only lightly. Review it before
+> relying on it, and keep backups of your data.
+
 A small, self-hosted web app for cataloguing, tagging, searching and previewing
 vending machine log files. Companion to VendTerm. Built for two people sharing a
 private GitHub repository; no database server, no cloud service.
