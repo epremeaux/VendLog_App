@@ -15,6 +15,21 @@ from vendlog.store import Store, StoreError, norm_tags
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 
 
+def _log_auto(res: dict, auto_pull: bool) -> None:
+    stamp = time.strftime("%H:%M:%S")
+    if not res.get("connected"):
+        print(f"[{stamp}] GitHub check: no data repository connected", flush=True)
+    elif res.get("offline"):
+        print(f"[{stamp}] GitHub check: could not reach GitHub (offline?)", flush=True)
+    else:
+        extra = f"; auto-pulled {res['pulled']} commit(s)" if res.get("pulled") else ""
+        print(f"[{stamp}] GitHub check OK: behind {res.get('behind')}, ahead {res.get('ahead')}, "
+              f"{len(res.get('changes', []))} local change(s){extra}"
+              f"{' (auto-pull on)' if auto_pull else ''}", flush=True)
+    if res.get("message") and not res.get("pulled"):
+        print(f"[{stamp}] {res['message']}", flush=True)
+
+
 def create_app(cfg: dict | None = None) -> Flask:
     cfg = cfg or config.load()
     app = Flask(__name__)
@@ -83,6 +98,7 @@ def create_app(cfg: dict | None = None) -> Flask:
             except Exception:
                 res["app"] = None
             auto["last"], auto["at"] = res, time.monotonic()
+            _log_auto(res, want_pull)
             return jsonify(res)
         # Between fetches, only the local part is refreshed so unpushed work shows up straight away.
         last = auto["last"]
