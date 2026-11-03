@@ -1,0 +1,12 @@
+{
+  "datetime": "2026-03-14T09:30",
+  "description": "Example log: door open, coin, keyboard selection.",
+  "machine": "Example Machine",
+  "maker": "JVMA",
+  "tags": [
+    "Coin inserted",
+    "Door open",
+    "JVMA",
+    "Keyboard entry"
+  ]
+}

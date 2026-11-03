@@ -105,7 +105,7 @@ $("b-update").onclick = () => run(async () => {
   say("");
 });
 
-$("b-refresh").onclick = () => run(async () => { await refresh(true); say("Status refreshed."); });
+$("b-refresh").onclick = () => run(async () => { await refresh(true); say("Checked GitHub. Status updated; no files were changed."); });
 $("b-pull").onclick = () => run(async () => done(await api("/api/git/pull", { method: "POST", json: {} })));
 $("b-push").onclick = () => run(async () => {
   done(await api("/api/git/push", { method: "POST", json: { message: $("commit-msg").value } }));

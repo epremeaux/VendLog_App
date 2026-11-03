@@ -81,7 +81,7 @@ class Store:
         if any(part.startswith(".") for part in rel.parts):
             return False
         return (p.is_file() and not p.name.endswith(META_SUFFIX)
-                and rel.as_posix() not in (VOCAB_FILE, MANIFEST_FILE))
+                and rel.as_posix() not in (VOCAB_FILE, MANIFEST_FILE, "README.md"))
 
     def read_meta(self, p: Path) -> dict:
         meta = {"tags": [], "machine": "", "maker": "", "datetime": "", "description": ""}

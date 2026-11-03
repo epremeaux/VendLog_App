@@ -17,7 +17,8 @@
     <h2>Repository status</h2>
     <div id="st-body" class="muted">Loading...</div>
     <div class="row">
-      <button type="button" id="b-refresh">Refresh (fetch)</button>
+      <button type="button" id="b-refresh">Check GitHub for changes</button>
+      <span class="muted">Look only: updates the counts above. Your files are not changed.</span>
     </div>
   </section>
 
@@ -25,7 +26,8 @@
     <h2>Synchronise</h2>
     <div class="row">
       <button type="button" id="b-pull" class="primary">Pull logs &amp; metadata from GitHub</button>
-    </div>
+            <span class="muted">Downloads the other person's changes into your logs folder.</span>
+          </div>
     <div class="field"><span>Commit message (optional)</span><input id="commit-msg" placeholder="e.g. Add Cheerio door logs"></div>
     <div class="row">
       <button type="button" id="b-push" class="primary">Commit &amp; push logs to GitHub</button>
