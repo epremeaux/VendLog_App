@@ -25,7 +25,8 @@ never handles passwords or tokens; see [Signing in](#signing-in-to-github).
 
 ## Requirements
 
-- Windows, Python 3.9+ and Git (with Git Credential Manager, included in Git for Windows).
+- Windows or macOS, Python 3.9+ and Git (with Git Credential Manager, included in Git for Windows and the
+  Git installer for macOS from git-scm.com; Xcode's Git works too, with the macOS keychain).
 - Flask (installed from `requirements.txt`).
 
 ## Setup
@@ -36,7 +37,14 @@ cd VendLog_App
 pip install -r requirements.txt
 ```
 
-Start it by double-clicking **`VendLog.bat`**. It starts the server and opens
+Start it with the launcher:
+
+- **Windows**: double-click **`VendLog.bat`**.
+- **macOS**: double-click **`VendLog.command`**. The first time, macOS may block it: right-click it,
+  choose **Open**, then **Open** again. If it says permission denied, run `chmod +x VendLog.command`
+  once in Terminal. The first run creates a private `.venv` and installs Flask.
+
+The launcher starts the server and opens
 <http://localhost:8765>. If VendLog is already running it only opens the
 browser. Or run `python app.py` (add `--no-browser` to skip opening the browser).
 
