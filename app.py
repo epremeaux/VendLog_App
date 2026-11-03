@@ -6,9 +6,9 @@ from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
 
-from vendlog import config, preview
+from vendlog import config, preview, version
 from vendlog import search as search_mod
-from vendlog.gitops import Git
+from vendlog.gitops import AppRepo, Git
 from vendlog.store import Store, StoreError, norm_tags
 
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
@@ -21,8 +21,10 @@ def create_app(cfg: dict | None = None) -> Flask:
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
     store = Store(Path(cfg["repo_path"]) / cfg["logs_dir"])
     app.extensions["store"] = store
-    git = Git(store.root, allow_local=bool(cfg.get("allow_local_remotes")))
+    git = Git(store.root, allow_local=bool(cfg.get("allow_local_remotes")),
+              before_push=lambda: version.stamp(store.root))
     app.extensions["git"] = git
+    app_repo = AppRepo(Path(cfg.get("app_dir") or config.APP_DIR), allow_local=True)
 
     @app.errorhandler(StoreError)
     def store_error(e):
@@ -53,6 +55,18 @@ def create_app(cfg: dict | None = None) -> Flask:
     @app.get("/sync")
     def sync_page():
         return render_template("sync.html", page="sync", default_url=cfg.get("data_repo_url", ""))
+
+    @app.get("/api/version")
+    def api_version():
+        return jsonify(version.data_info(store.root))
+
+    @app.post("/api/app/check")
+    def app_check():
+        return jsonify(app_repo.check())
+
+    @app.post("/api/app/update")
+    def app_update():
+        return jsonify(app_repo.update())
 
     @app.get("/api/git/status")
     def git_status():
@@ -142,6 +156,12 @@ def create_app(cfg: dict | None = None) -> Flask:
         files = store.bulk_tags(d.get("paths"), d.get("add"), d.get("remove"))
         return jsonify(files=files, tags=store.all_tags())
 
+    @app.post("/api/bulk-move")
+    def bulk_move():
+        d = request.get_json(silent=True) or {}
+        files = store.bulk_move(d.get("paths"), d.get("machine"))
+        return jsonify(files=files)
+
     @app.post("/api/rename")
     def file_rename():
         d = request.get_json(silent=True) or {}
@@ -181,6 +201,47 @@ def create_app(cfg: dict | None = None) -> Flask:
     return app
 
 
-if __name__ == "__main__":
+def _already_running(host: str, port: int) -> str:
+    """'vendlog' if our server answers on host:port, 'other' if something else holds the port, '' if free."""
+    import socket
+    import urllib.request
+    s = socket.socket()
+    s.settimeout(1)
+    try:
+        if s.connect_ex((host, port)) != 0:
+            return ""
+    finally:
+        s.close()
+    try:
+        with urllib.request.urlopen(f"http://{host}:{port}/api/version", timeout=2) as r:
+            return "vendlog" if r.status == 200 else "other"
+    except Exception:
+        return "other"
+
+
+def main(argv: list[str]) -> int:
+    import threading
+    import webbrowser
     cfg = config.load()
-    create_app(cfg).run(host=cfg["host"], port=cfg["port"])
+    host, port = cfg["host"], cfg["port"]
+    url = f"http://{'localhost' if host in ('127.0.0.1', '0.0.0.0') else host}:{port}/"
+    open_browser = "--no-browser" not in argv
+    state = _already_running(host, port)
+    if state == "vendlog":
+        print(f"VendLog is already running at {url}")
+        if open_browser:
+            webbrowser.open(url)
+        return 0
+    if state == "other":
+        print(f"Port {port} is in use by another program. Change \"port\" in vendlog.config.json and try again.")
+        return 1
+    if open_browser:
+        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    print(f"VendLog {version.__version__} running at {url}  (close this window or press Ctrl+C to stop)")
+    create_app(cfg).run(host=host, port=port)
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main(sys.argv[1:]))

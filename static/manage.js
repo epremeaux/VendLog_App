@@ -139,11 +139,16 @@ function renderDetail() {
   if (f.error) pane.appendChild(el("p", "Warning: " + f.error, "error"));
 
   const machine = el("input"); machine.value = f.machine || "";
+  machine.setAttribute("list", "machine-options"); machine.autocomplete = "off";
+  const machineField = field("Machine", machine);
+  const hint = el("span", "Changing this moves the file to logs/<machine>/ when you save.", "muted");
+  hint.style.fontWeight = "normal";
+  machineField.appendChild(hint);
   const maker = el("input"); maker.value = f.maker || ""; maker.setAttribute("list", "maker-options");
   maker.autocomplete = "off";
   const when = el("input"); when.value = f.datetime || ""; when.placeholder = "2026-03-01T14:22:00+09:00";
   const desc = el("textarea"); desc.rows = 3; desc.value = f.description || "";
-  pane.append(field("Machine", machine), field("Machine maker", maker), field("Date/time", when), field("Description", desc));
+  pane.append(machineField, field("Machine maker", maker), field("Date/time", when), field("Description", desc));
 
   const picker = tagPicker(f.tags);
   pane.append(el("h3", "Tags"), picker.node);
@@ -204,6 +209,29 @@ document.getElementById("bulk-apply").onclick = async () => {
     await api("/api/bulk-tags", { method: "POST", json: { paths, add, remove } });
     bulkAdd.clear(); bulkRemove.clear();
     await loadFiles(); await loadTags();
+  } catch (e) { fail(e); }
+};
+
+const bulkMachine = document.getElementById("bulk-machine");
+bulkMachine.oninput = bulkMachine.onchange = () => {
+  const near = nearDuplicates(bulkMachine.value.trim());
+  const w = document.getElementById("bulk-dup");
+  w.hidden = !near.length;
+  w.textContent = near.length ? `Warning: looks like the existing "${near.join('", "')}". Pick it from the list to avoid a similar folder.` : "";
+};
+document.getElementById("bulk-move").onclick = async () => {
+  const machine = bulkMachine.value.trim();
+  if (!machine) { alert("Enter a machine name."); return; }
+  const paths = [...state.selected];
+  const near = nearDuplicates(machine);
+  if (near.length && !confirm(`"${machine}" looks like the existing "${near.join('", "')}".\nUse a separate new folder anyway?`)) return;
+  if (!confirm(`Move ${paths.length} file(s) to logs/${machine}/ and set their Machine to "${machine}"?`)) return;
+  try {
+    const res = await api("/api/bulk-move", { method: "POST", json: { paths, machine } });
+    state.selected = new Set(res.files.map(f => f.path));
+    state.current = null;
+    bulkMachine.value = "";
+    await loadFiles();
   } catch (e) { fail(e); }
 };
 

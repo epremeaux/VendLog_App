@@ -169,8 +169,8 @@ def test_update_meta(client, repo):
     r = client.put("/api/files/sub/b.log", json={"tags": ["Door open", "jvma", "JVMA", " Coin  inserted "],
                                                   "machine": " M2 "}, headers=H)
     assert r.json["tags"] == ["Coin inserted", "Door open", "jvma"]
-    assert r.json["machine"] == "M2"
-    saved = json.loads((repo / "logs" / "sub" / "b.log.meta.json").read_text())
+    assert r.json["machine"] == "M2" and r.json["path"] == "M2/b.log"
+    saved = json.loads((repo / "logs" / "M2" / "b.log.meta.json").read_text())
     assert list(saved) == ["tags", "machine", "maker", "datetime", "description"]
     assert client.put("/api/files/a.log", json={"tags": "x"}, headers=H).status_code == 400
     assert client.put("/api/files/a.log", json={"tags": [""]}, headers=H).status_code == 400

@@ -52,14 +52,26 @@ def repo_name(url: str) -> str:
     return re.sub(r"\.git$", "", last, flags=re.I)
 
 
+def _retry(fn, tries: int = 8, delay: float = 0.5):
+    """Retry briefly on Windows sharing/permission errors (sync clients, virus scanners)."""
+    for i in range(tries):
+        try:
+            return fn()
+        except PermissionError:
+            if i == tries - 1:
+                raise
+            time.sleep(delay)
+
+
 def _same(a: str, b: str) -> bool:
     return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
 
 
 class Git:
-    def __init__(self, logs_dir: Path, allow_local: bool = False):
+    def __init__(self, logs_dir: Path, allow_local: bool = False, before_push=None):
         self.dir = Path(logs_dir)
         self.allow_local = allow_local
+        self.before_push = before_push
         self._lock = threading.Lock()
         self._pending: dict | None = None
 
@@ -196,6 +208,9 @@ class Git:
             if st["behind"]:
                 raise Conflict(f"The remote has {st['behind']} newer commit(s). Pull first so nothing is overwritten.")
             done = []
+            if self.before_push:
+                self.before_push()
+                st = self.status()
             if st["changes"]:
                 self._ensure_excludes()
                 msg = (message or "").strip() or f"Update logs ({len(st['changes'])} change(s))"
@@ -251,27 +266,95 @@ class Git:
             self._pending = None
             parent = self.dir.parent
             stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            new = parent / f"{self.dir.name}.new-{stamp}"
-            try:
-                self._run(["clone", "--", url, str(new)], timeout=1800, cwd=parent)
-            except Exception:
-                shutil.rmtree(new, ignore_errors=True)
-                raise
+            # Move the old folder aside, then clone straight into the final path: renaming a
+            # freshly cloned folder is what Dropbox/antivirus tend to block on Windows.
             backup = None
+            if self.dir.exists():
+                backup = parent / f"{self.dir.name}.old-{stamp}"
+                try:
+                    _retry(lambda: os.replace(self.dir, backup))
+                except OSError as e:
+                    raise GitError(f"Could not move the current folder aside (is a file open or syncing?): {e}")
             try:
-                if self.dir.exists():
-                    backup = parent / f"{self.dir.name}.old-{stamp}"
-                    os.replace(self.dir, backup)
-                os.replace(new, self.dir)
-            except OSError as e:
-                if backup is not None and backup.exists() and not self.dir.exists():
-                    os.replace(backup, self.dir)
-                shutil.rmtree(new, ignore_errors=True)
-                raise GitError(f"Could not swap folders (is a file open or syncing?): {e}")
+                self._run(["clone", "--", url, str(self.dir)], timeout=1800, cwd=parent)
+            except Exception:
+                shutil.rmtree(self.dir, ignore_errors=True)
+                if backup is not None and not self.dir.exists():
+                    try:
+                        _retry(lambda: os.replace(backup, self.dir))
+                    except OSError:
+                        pass
+                raise
             self._ensure_excludes()
             msg = "Repository connected."
             if backup:
                 msg += f" The previous folder was kept as '{backup.name}'; delete it when you no longer need it."
             return {**self.status(), "message": msg}
+        finally:
+            self._lock.release()
+
+
+class AppRepo(Git):
+    """The application's own checkout (VendLog_App): check for and fetch newer versions."""
+
+    VERSION_FILE = "vendlog/__init__.py"
+
+    def _remote_version(self) -> str:
+        r = self._run(["show", f"@{{u}}:{self.VERSION_FILE}"], check=False)
+        m = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', r.stdout) if r.returncode == 0 else None
+        return m.group(1) if m else ""
+
+    def _tracked_dirty(self) -> bool:
+        return bool(self._run(["status", "--porcelain", "-uno"]).stdout.strip())
+
+    def check(self) -> dict:
+        from . import __version__
+        from .version import newer
+        out = {"connected": False, "app_version": __version__, "latest_version": "", "behind": 0,
+               "ahead": 0, "dirty": False, "can_update": False, "message": ""}
+        if not self.is_repo():
+            out["message"] = "The app folder is not a Git checkout, so it cannot update itself. Download it again from GitHub."
+            return out
+        out["connected"] = True
+        self._guard()
+        try:
+            self._run(["fetch", "--prune", "origin"], timeout=300)
+            st = self.status()
+            out["behind"], out["ahead"] = st["behind"] or 0, st["ahead"] or 0
+            out["dirty"] = self._tracked_dirty()
+            if st["upstream"]:
+                out["latest_version"] = self._remote_version()
+        finally:
+            self._lock.release()
+        out["update_available"] = bool(out["behind"]) or newer(out["latest_version"], __version__)
+        out["can_update"] = out["behind"] > 0 and not out["ahead"] and not out["dirty"]
+        if not out["update_available"]:
+            out["message"] = "The app is up to date."
+        elif not out["behind"]:
+            out["restart_needed"] = True
+            out["message"] = "The newer version is already downloaded. Close VendLog and start it again to use it."
+        elif out["ahead"] or out["dirty"]:
+            out["message"] = "An update exists, but this copy of the app has local changes, so it was not applied automatically."
+        return out
+
+    def update(self) -> dict:
+        self._guard()
+        try:
+            self._require_repo()
+            if self._tracked_dirty():
+                raise Conflict("The app folder has local changes; not updating over them.")
+            self._run(["fetch", "--prune", "origin"], timeout=300)
+            st = self.status()
+            if st["ahead"]:
+                raise Conflict("The app folder has local commits that are not on GitHub; not updating.")
+            if not st["behind"]:
+                return {"message": "The app is already up to date.", "restart": False}
+            old = self._out(["rev-parse", "HEAD"])
+            self._run(["merge", "--ff-only", "@{u}"])
+            changed = self._out(["diff", "--name-only", old, "HEAD"]).split()
+            msg = "App updated. Close VendLog and start it again to use the new version."
+            if "requirements.txt" in changed:
+                msg += " requirements.txt changed: also run  pip install -r requirements.txt"
+            return {"message": msg, "restart": True, "new_version": self._remote_version() or ""}
         finally:
             self._lock.release()

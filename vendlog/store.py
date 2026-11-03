@@ -10,6 +10,7 @@ from pathlib import Path
 
 META_SUFFIX = ".meta.json"
 VOCAB_FILE = "tags.json"
+MANIFEST_FILE = "vendlog.json"
 META_FIELDS = ("tags", "machine", "maker", "datetime", "description")
 DEFAULT_MAKERS = ("Fuji Denki", "Sanden", "Panasonic", "JVMA", "UNKNOWN")
 
@@ -35,7 +36,7 @@ def safe_filename(name: str) -> str:
     name = _BAD_CHARS.sub("_", os.path.basename((name or "").replace("\\", "/"))).strip(" .")
     if not name or name.startswith("."):
         raise StoreError("Invalid filename")
-    if name.endswith(META_SUFFIX) or name.lower() == VOCAB_FILE or name.endswith(".tmp"):
+    if name.endswith(META_SUFFIX) or name.lower() in (VOCAB_FILE, MANIFEST_FILE) or name.endswith(".tmp"):
         raise StoreError("Reserved filename: " + name)
     if name.split(".")[0].upper() in _RESERVED:
         raise StoreError("Reserved filename: " + name)
@@ -79,7 +80,8 @@ class Store:
         rel = p.relative_to(self.root)
         if any(part.startswith(".") for part in rel.parts):
             return False
-        return p.is_file() and not p.name.endswith(META_SUFFIX) and rel.as_posix() != VOCAB_FILE
+        return (p.is_file() and not p.name.endswith(META_SUFFIX)
+                and rel.as_posix() not in (VOCAB_FILE, MANIFEST_FILE))
 
     def read_meta(self, p: Path) -> dict:
         meta = {"tags": [], "machine": "", "maker": "", "datetime": "", "description": ""}
@@ -189,6 +191,34 @@ class Store:
             results.append(self.info(p))
         return results
 
+    def bulk_move(self, paths: list, machine: str) -> list[dict]:
+        """Set the machine on many files and move them into logs/<machine>/. All-or-nothing on conflicts."""
+        if not isinstance(paths, list) or not paths:
+            raise StoreError("No files selected")
+        machine = " ".join((machine or "").split())
+        if not machine:
+            raise StoreError("Enter a machine name")
+        targets = [self._log_path(p) for p in paths if isinstance(p, str)]
+        if len(targets) != len(paths):
+            raise StoreError("Invalid path list")
+        plan, taken = [], set()
+        for p in dict.fromkeys(targets):
+            dest = self._machine_destination(p, machine)
+            if dest is not None:
+                label = dest.relative_to(self.root).as_posix()
+                if dest.exists() or self._sidecar(dest).exists() or label.lower() in taken:
+                    raise Conflict(f"'{label}' already exists; rename a file first. Nothing was moved.")
+                taken.add(label.lower())
+            plan.append((p, dest))
+        results = []
+        for p, dest in plan:
+            meta = self.read_meta(p)
+            meta.pop("error", None)
+            meta["machine"] = machine
+            self._write_json(self._sidecar(p), {k: meta[k] for k in META_FIELDS})
+            results.append(self.info(self._move(p, dest) if dest is not None else p))
+        return results
+
     def rename(self, rel: str, new_name: str) -> dict:
         p = self._log_path(rel)
         name = safe_filename(new_name)
@@ -227,8 +257,49 @@ class Store:
                 meta[key] = data[key].strip()
             else:
                 raise StoreError(f"{key} must be a string")
+        dest = self._machine_destination(p, meta["machine"]) if "machine" in data else None
+        if dest is not None and (dest.exists() or self._sidecar(dest).exists()):
+            raise Conflict(f"'{dest.relative_to(self.root).as_posix()}' already exists; rename the file first")
         self._write_json(self._sidecar(p), {k: meta[k] for k in META_FIELDS})
+        if dest is not None:
+            p = self._move(p, dest)
         return self.info(p)
+
+    def _machine_destination(self, p: Path, machine: str) -> Path | None:
+        """Where the file belongs for this machine, or None if it is already there or no machine is set."""
+        if not machine:
+            return None
+        folder_name = safe_filename(machine)
+        current = p.parent
+        if current != self.root and current.name.lower() == folder_name.lower() and current.parent == self.root:
+            return None
+        # Reuse an existing folder that differs only by case so we don't create near-duplicates.
+        if self.root.is_dir():
+            for d in self.root.iterdir():
+                if d.is_dir() and d.name.lower() == folder_name.lower():
+                    folder_name = d.name
+                    break
+        return self.root / folder_name / p.name
+
+    def _move(self, p: Path, dest: Path) -> Path:
+        if dest.parent.exists() and not dest.parent.is_dir():
+            raise Conflict(f"'{dest.parent.name}' exists and is not a folder")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        old_meta, new_meta = self._sidecar(p), self._sidecar(dest)
+        os.rename(p, dest)
+        if old_meta.exists():
+            try:
+                os.rename(old_meta, new_meta)
+            except OSError:
+                os.rename(dest, p)
+                raise StoreError("Could not move metadata file")
+        old_dir = p.parent
+        if old_dir != self.root:
+            try:
+                old_dir.rmdir()  # drop the old folder only if it is now empty
+            except OSError:
+                pass
+        return dest
 
     # ---- machine makers ---------------------------------------------------
     def makers(self) -> list[str]:

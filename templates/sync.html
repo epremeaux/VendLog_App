@@ -3,6 +3,17 @@
 {% block body %}
 <main class="sync">
   <section class="panel">
+    <h2>Versions</h2>
+    <p id="ver-warn" class="warn" hidden></p>
+    <dl id="ver-body"></dl>
+    <div class="row">
+      <button type="button" id="b-check">Check for app updates</button>
+      <button type="button" id="b-update" class="primary" hidden>Update app from GitHub</button>
+    </div>
+    <p id="ver-msg" class="muted"></p>
+  </section>
+
+  <section class="panel">
     <h2>Repository status</h2>
     <div id="st-body" class="muted">Loading...</div>
     <div class="row">

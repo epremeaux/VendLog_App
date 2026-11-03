@@ -135,3 +135,53 @@ def test_maker_field(client):
     r = client.put("/api/files/m.log", headers=H, json={"maker": "Sanden"})
     assert r.json["maker"] == "Sanden" and r.json["tags"] == []
     assert client.get("/api/files").json["files"][0]["maker"] == ""
+
+
+def test_machine_change_moves_file(client, tmp_path):
+    H = {"X-VendLog": "1"}
+    logs = tmp_path / "logs"
+    r = client.put("/api/files/door.log", headers=H, json={"machine": "cheerio"})
+    assert r.status_code == 200 and r.json["path"] == "Cheerio/door.log"  # reuses existing folder case
+    assert not (logs / "door.log").exists() and not (logs / "door.log.meta.json").exists()
+    assert (logs / "Cheerio" / "door.log.meta.json").exists() and r.json["machine"] == "cheerio"
+    # already in the right folder: no move
+    assert client.put("/api/files/Cheerio/door.log", headers=H, json={"machine": "Cheerio"}).json["path"] == "Cheerio/door.log"
+    # new machine creates a folder; emptied old folder is removed
+    r = client.put("/api/files/plain.log", headers=H, json={"machine": "New One"})
+    assert r.json["path"] == "New One/plain.log"
+    r = client.put("/api/files/New One/plain.log", headers=H, json={"machine": "Other"})
+    assert r.json["path"] == "Other/plain.log" and not (logs / "New One").exists()
+    # name clash: nothing changes
+    (logs / "Other" / "run1.log").write_text("x")
+    r = client.put("/api/files/Cheerio/run1.log", headers=H, json={"machine": "Other", "tags": ["zzz"]})
+    assert r.status_code == 409
+    assert (logs / "Cheerio" / "run1.log").exists() and "zzz" not in (logs / "Cheerio" / "run1.log.meta.json").read_text()
+    # clearing the machine leaves the file where it is
+    assert client.put("/api/files/Other/plain.log", headers=H, json={"machine": ""}).json["path"] == "Other/plain.log"
+    # editing other fields without a machine key never moves
+    assert client.put("/api/files/Cheerio/door.log", headers=H, json={"description": "d"}).json["path"] == "Cheerio/door.log"
+
+
+def test_bulk_move(client, tmp_path):
+    H = {"X-VendLog": "1"}
+    logs = tmp_path / "logs"
+    r = client.post("/api/bulk-move", headers=H, json={"paths": ["door.log", "plain.log"], "machine": "cheerio"})
+    assert r.status_code == 200
+    assert sorted(f["path"] for f in r.json["files"]) == ["Cheerio/door.log", "Cheerio/plain.log"]
+    assert all(f["machine"] == "cheerio" for f in r.json["files"])
+    assert (logs / "Cheerio" / "plain.log.meta.json").exists() and not (logs / "door.log").exists()
+    # clash: nothing at all is moved
+    (logs / "Other").mkdir()
+    (logs / "Other" / "door.log").write_text("x")
+    r = client.post("/api/bulk-move", headers=H, json={"paths": ["Cheerio/plain.log", "Cheerio/door.log"], "machine": "Other"})
+    assert r.status_code == 409
+    assert (logs / "Cheerio" / "plain.log").exists() and (logs / "Cheerio" / "door.log").exists()
+    # two sources with the same name going to one folder
+    (logs / "A").mkdir(); (logs / "B").mkdir()
+    (logs / "A" / "same.log").write_text("1"); (logs / "B" / "same.log").write_text("2")
+    assert client.post("/api/bulk-move", headers=H, json={"paths": ["A/same.log", "B/same.log"], "machine": "C"}).status_code == 409
+    assert (logs / "A" / "same.log").exists() and not (logs / "C").exists()
+    # validation
+    assert client.post("/api/bulk-move", headers=H, json={"paths": [], "machine": "X"}).status_code == 400
+    assert client.post("/api/bulk-move", headers=H, json={"paths": ["a.log"], "machine": " "}).status_code == 400
+    assert client.post("/api/bulk-move", headers=H, json={"paths": ["../app.py"], "machine": "X"}).status_code in (400, 404)

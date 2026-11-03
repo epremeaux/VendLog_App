@@ -61,7 +61,49 @@ async function refresh(fetchRemote) {
 function done(res) {
   render(res);
   say(res.message || "Done.");
+  loadVersions().catch(() => {});
 }
+
+async function loadVersions() {
+  const v = await api("/api/version");
+  const dl = $("ver-body");
+  dl.replaceChildren();
+  const rows = [["App version", v.app_version]];
+  rows.push(["Data version", v.has_manifest
+    ? `written by app ${v.data_app_version || "?"} (data format ${v.data_format ?? "?"})`
+    : "no version recorded yet (it is added on your next push)"]);
+  if (appLatest) rows.push(["Latest app on GitHub", appLatest]);
+  rows.forEach(([k, t]) => dl.append(el("dt", k), el("dd", t)));
+  const w = $("ver-warn");
+  w.hidden = !(v.app_too_old || v.format_unsupported);
+  w.textContent = v.format_unsupported
+    ? `This data uses format ${v.data_format}, which this app (version ${v.app_version}) cannot read safely. Update the app before changing anything.`
+    : v.app_too_old
+      ? `The data was last written by a newer app (${v.data_app_version}); you are running ${v.app_version}. Update the app.`
+      : "";
+  return v;
+}
+
+let appLatest = "";
+
+$("b-check").onclick = () => run(async () => {
+  const r = await api("/api/app/check", { method: "POST", json: {} });
+  appLatest = r.latest_version || "";
+  $("b-update").hidden = !r.can_update;
+  $("ver-msg").textContent = r.message
+    || `A newer app is available${r.latest_version ? " (" + r.latest_version + ")" : ""}. Click "Update app from GitHub".`;
+  await loadVersions();
+  say("");
+});
+
+$("b-update").onclick = () => run(async () => {
+  if (!confirm("Download the latest app code from GitHub now?\n\nYour logs are not affected. You will need to restart VendLog afterwards.")) return;
+  const r = await api("/api/app/update", { method: "POST", json: {} });
+  $("b-update").hidden = true;
+  $("ver-msg").textContent = r.message;
+  $("ver-msg").className = r.restart ? "warn" : "muted";
+  say("");
+});
 
 $("b-refresh").onclick = () => run(async () => { await refresh(true); say("Status refreshed."); });
 $("b-pull").onclick = () => run(async () => done(await api("/api/git/pull", { method: "POST", json: {} })));
@@ -109,4 +151,5 @@ $("b-connect").onclick = () => run(async () => {
 });
 
 updateLock();
+loadVersions().catch(() => {});
 run(async () => { await refresh(false); say(""); });

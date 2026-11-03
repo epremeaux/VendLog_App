@@ -37,6 +37,13 @@
       <div class="field"><span>Add tags to selected</span><div id="bulk-add"></div></div>
       <div class="field"><span>Remove tags from selected</span><div id="bulk-remove"></div></div>
       <div class="row"><button type="button" id="bulk-apply" class="primary">Apply to selected</button></div>
+      <div class="field"><span>Move selected to machine folder</span>
+        <div class="row">
+          <input id="bulk-machine" list="machine-options" placeholder="machine name (type new, or pick existing)" autocomplete="off">
+          <button type="button" id="bulk-move" class="primary">Move selected</button>
+        </div>
+        <p class="warn" id="bulk-dup" hidden></p>
+      </div>
     </div>
     <table id="files">
       <thead><tr><th><input type="checkbox" id="select-all" title="Select all"></th><th>File</th><th>Size</th><th>Recorded</th><th>Tags</th></tr></thead>
