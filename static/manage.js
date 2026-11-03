@@ -79,41 +79,7 @@ function select(f) {
 }
 
 // ---- detail / editing ----------------------------------------------------
-function field(label, input) {
-  const wrap = el("label", undefined, "field");
-  wrap.appendChild(el("span", label));
-  wrap.appendChild(input);
-  return wrap;
-}
-
-// Chip editor with autocomplete from the shared vocabulary (datalist #tag-options).
-function tagPicker(initial, placeholder) {
-  let tags = [...initial];
-  const node = el("div");
-  const chips = el("div", undefined, "chips");
-  const input = el("input");
-  input.setAttribute("list", "tag-options");
-  input.placeholder = placeholder || "Add tag (type or pick)";
-  const draw = () => {
-    chips.replaceChildren();
-    tags.forEach(t => {
-      const s = el("span", t + " ", "tag");
-      s.appendChild(button("\u00d7", () => { tags = tags.filter(x => x !== t); draw(); }, "x"));
-      chips.appendChild(s);
-    });
-  };
-  const add = () => {
-    const v = input.value.split(/\s+/).join(" ").trim();
-    if (v && !tags.some(t => t.toLowerCase() === v.toLowerCase())) { tags.push(v); draw(); }
-    input.value = "";
-  };
-  input.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); add(); } };
-  const row = el("div", undefined, "row");
-  row.append(input, button("Add", add));
-  node.append(chips, row);
-  draw();
-  return { node, get: () => { add(); return [...tags]; }, clear: () => { tags = []; draw(); } };
-}
+// field() and tagPicker() live in common.js.
 
 function renderDetail() {
   const pane = document.getElementById("detail-pane");

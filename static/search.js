@@ -87,6 +87,60 @@ async function loadTagFilters() {
   });
 }
 
+// ---- editable metadata under the title -------------------------------------------
+let pvPicker = null;
+
+async function loadOptions() {
+  const fill = (id, values) => {
+    const dl = $(id);
+    dl.replaceChildren();
+    values.forEach(v => { const o = el("option"); o.value = v; dl.appendChild(o); });
+  };
+  const [tags, makers, files] = await Promise.all([api("/api/tags"), api("/api/makers"), api("/api/files")]);
+  fill("tag-options", tags.tags.map(t => t.name));
+  fill("maker-options", makers.makers);
+  const seen = new Map();
+  files.files.forEach(f => {
+    [f.machine, f.path.includes("/") ? f.path.split("/")[0] : ""].forEach(n => {
+      n = (n || "").trim();
+      if (n && !seen.has(n.toLowerCase())) seen.set(n.toLowerCase(), n);
+    });
+  });
+  fill("machine-options", [...seen.values()].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())));
+}
+
+function showMeta(f) {
+  $("pv-machine").value = f.machine || "";
+  $("pv-maker").value = f.maker || "";
+  $("pv-dt").value = f.datetime || "";
+  $("pv-desc").value = f.description || "";
+  pvPicker = tagPicker(f.tags || []);
+  $("pv-tags").replaceChildren(pvPicker.node);
+  $("pv-save-msg").textContent = "";
+}
+
+$("pv-save").onclick = async () => {
+  if (!P.path) return;
+  const msg = $("pv-save-msg");
+  msg.className = "muted";
+  msg.textContent = "Saving\u2026";
+  try {
+    const f = await api(fileUrl(P.path), { method: "PUT", json: {
+      tags: pvPicker.get(), machine: $("pv-machine").value, maker: $("pv-maker").value,
+      datetime: $("pv-dt").value, description: $("pv-desc").value } });
+    const moved = f.path !== P.path;
+    P.path = f.path;
+    $("pv-name").textContent = f.path;
+    showMeta(f);
+    msg.textContent = moved ? "Saved. File moved to " + f.path + "." : "Saved.";
+    await Promise.all([loadOptions(), loadTagFilters(), runSearch()]);
+    if (moved) await loadWindow(P.offset);
+  } catch (e) {
+    msg.className = "error";
+    msg.textContent = e.message;
+  }
+};
+
 // ---- preview ------------------------------------------------------------------
 async function openFile(f, line) {
   P.path = f.path;
@@ -97,6 +151,7 @@ async function openFile(f, line) {
   $("preview-empty").hidden = true;
   $("preview").hidden = false;
   $("pv-name").textContent = f.path;
+  showMeta(f);
   $("pv-find").value = q;
   $("pv-matches").textContent = "";
   await loadWindow(line ? Math.floor((line - 1) / PAGE) * PAGE : 0, line);
@@ -175,6 +230,7 @@ $("pv-goto").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("
 
 (async () => {
   await loadTagFilters();
+  await loadOptions();
   await runSearch();
   const open = new URLSearchParams(location.search).get("open");
   if (open) await openFile(await api(fileUrl(open)), null);

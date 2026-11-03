@@ -25,6 +25,20 @@
         <strong id="pv-name"></strong>
         <span class="muted" id="pv-info"></span>
       </div>
+      <div id="pv-meta" class="meta-edit">
+        <div class="row">
+          <label class="field">Machine <input id="pv-machine" list="machine-options" autocomplete="off"></label>
+          <label class="field">Machine maker <input id="pv-maker" list="maker-options" autocomplete="off"></label>
+          <label class="field">Date/time <input id="pv-dt" placeholder="2026-03-01T14:22:00+09:00"></label>
+        </div>
+        <label class="field">Description <textarea id="pv-desc" rows="2"></textarea></label>
+        <div class="field"><span>Tags</span><div id="pv-tags"></div></div>
+        <div class="row">
+          <button type="button" id="pv-save" class="primary">Save</button>
+          <span id="pv-save-msg" class="muted"></span>
+        </div>
+        <p class="muted">Changing the machine moves the file to logs/&lt;machine&gt;/ when you save.</p>
+      </div>
       <div class="row">
         <input id="pv-find" placeholder="Find in this file">
         <button type="button" id="pv-find-btn">Find</button>
@@ -43,5 +57,8 @@
     </div>
   </section>
 </main>
+<datalist id="tag-options"></datalist>
+<datalist id="machine-options"></datalist>
+<datalist id="maker-options"></datalist>
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='search.js') }}"></script>{% endblock %}
