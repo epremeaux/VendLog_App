@@ -132,3 +132,53 @@ def test_launcher_port_detection(tmp_path):
     finally:
         s.close()
     assert app_module._already_running("127.0.0.1", port) == ""
+
+
+def _auto_client(tmp_path, pull):
+    bare = seed(tmp_path, "d", {"a.log": "x\n"})
+    mine = clone(tmp_path, bare, "mine")
+    other = clone(tmp_path, bare, "other")
+    cfg = {"repo_path": str(tmp_path), "logs_dir": "mine", "allow_local_remotes": True,
+           "app_dir": str(tmp_path / "noapp"), "auto_pull_on_start": pull}
+    return create_app(cfg).test_client(), mine, other
+
+
+def _push_other(other, name):
+    (other / name).write_text("y\n")
+    git(other, "add", "-A")
+    git(other, "commit", "-m", "more")
+    git(other, "push")
+
+
+def test_auto_check_reports_without_changing_files(tmp_path):
+    c, mine, other = _auto_client(tmp_path, pull=False)
+    _push_other(other, "b.log")
+    st = c.post("/api/git/auto", headers=H).get_json()
+    assert st["behind"] == 1 and st["pulled"] == 0 and not (mine / "b.log").exists()
+
+
+def test_auto_pull_fast_forwards_when_clean(tmp_path):
+    c, mine, other = _auto_client(tmp_path, pull=True)
+    _push_other(other, "b.log")
+    st = c.post("/api/git/auto", headers=H).get_json()
+    assert st["pulled"] == 1 and (mine / "b.log").exists() and st["behind"] == 0
+
+
+def test_auto_pull_skipped_with_local_changes_and_local_banner_data(tmp_path):
+    c, mine, other = _auto_client(tmp_path, pull=True)
+    (mine / "new.log").write_text("z\n")
+    _push_other(other, "b.log")
+    st = c.post("/api/git/auto", headers=H).get_json()
+    assert st["pulled"] == 0 and st["behind"] == 1 and not (mine / "b.log").exists()
+    assert [x["path"] for x in st["changes"]] == ["new.log"]
+    # between fetches the local part is still fresh
+    (mine / "new2.log").write_text("q\n")
+    st = c.post("/api/git/auto", headers=H).get_json()
+    assert len(st["changes"]) == 2
+
+
+def test_auto_offline_is_quiet(tmp_path):
+    c, mine, other = _auto_client(tmp_path, pull=True)
+    git(mine, "remote", "set-url", "origin", str(tmp_path / "gone.git"))
+    st = c.post("/api/git/auto", headers=H).get_json()
+    assert st["connected"] and st["offline"] is True

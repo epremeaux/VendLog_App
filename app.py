@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
@@ -67,6 +68,30 @@ def create_app(cfg: dict | None = None) -> Flask:
     @app.post("/api/app/update")
     def app_update():
         return jsonify(app_repo.update())
+
+    auto = {"at": 0.0, "pulled_once": False, "last": None}
+
+    @app.post("/api/git/auto")
+    def git_auto():
+        """Quiet check used on every page load. Fetches at most once a minute; auto-pull (opt-in) only once per run."""
+        if auto["last"] is None or time.monotonic() - auto["at"] > 60:
+            want_pull = bool(cfg.get("auto_pull_on_start")) and not auto["pulled_once"]
+            auto["pulled_once"] = True
+            res = git.auto_sync(want_pull)
+            try:
+                res["app"] = app_repo.check()
+            except Exception:
+                res["app"] = None
+            auto["last"], auto["at"] = res, time.monotonic()
+            return jsonify(res)
+        # Between fetches, only the local part is refreshed so unpushed work shows up straight away.
+        last = auto["last"]
+        if last.get("connected"):
+            try:
+                last = {**last, **git.status()}
+            except Exception:
+                pass
+        return jsonify(last)
 
     @app.get("/api/git/status")
     def git_status():

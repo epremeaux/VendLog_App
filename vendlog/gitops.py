@@ -158,6 +158,33 @@ class Git:
         finally:
             self._lock.release()
 
+    def auto_sync(self, pull: bool) -> dict:
+        """Fetch, and optionally fast-forward. Never merges, never touches local changes, never raises."""
+        out = {"connected": False, "pulled": 0, "message": "", "offline": False}
+        try:
+            self._guard()
+        except Conflict:
+            return out
+        try:
+            if not self.is_repo():
+                return out
+            r = self._run(["fetch", "--prune", "origin"], timeout=60, check=False)
+            out["offline"] = r.returncode != 0
+            st = self.status()
+            if pull and not out["offline"] and st["behind"] and not st["ahead"] \
+                    and not st["changes"] and not st["merging"]:
+                m = self._run(["merge", "--ff-only", "@{u}"], check=False)
+                if m.returncode == 0:
+                    out["pulled"] = st["behind"]
+                    out["message"] = f"Pulled {st['behind']} new commit(s) from GitHub."
+                    st = self.status()
+            return {**st, **{k: v for k, v in out.items() if k != "connected"}}
+        except Exception as e:  # automatic checks must never break page loads
+            out["message"] = "Automatic check failed: " + scrub(str(e))
+            return out
+        finally:
+            self._lock.release()
+
     def pull(self) -> dict:
         self._guard()
         try:

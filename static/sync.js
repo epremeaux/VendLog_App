@@ -62,6 +62,7 @@ function done(res) {
   render(res);
   say(res.message || "Done.");
   loadVersions().catch(() => {});
+  if (typeof updateBanners === "function") updateBanners();
 }
 
 async function loadVersions() {
@@ -152,4 +153,4 @@ $("b-connect").onclick = () => run(async () => {
 
 updateLock();
 loadVersions().catch(() => {});
-run(async () => { await refresh(false); say(""); });
+run(async () => { await refresh(true).catch(() => refresh(false)); say(""); });

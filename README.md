@@ -61,6 +61,12 @@ Copy `vendlog.config.example.json` to `vendlog.config.json` (not committed):
 | `port` | `8765` | Change if the port is taken. |
 | `logs_dir` | `logs` | Where the data repo lives. |
 | `data_repo_url` | the VendLog_Data URL | Default repository offered on the Synchronise page. |
+| `auto_pull_on_start` | `false` | If `true`, the first page load after startup pulls GitHub changes, but only as a clean fast-forward with no local changes. Otherwise it just shows a banner. Never merges and never pushes. |
+
+### Banners
+Every page checks GitHub quietly (at most once a minute) and shows a banner when you have changes
+that are not pushed yet, when GitHub has new commits, or when a newer app is available.
+Push before closing VendLog so your colleague gets your work.
 
 ## Using it
 

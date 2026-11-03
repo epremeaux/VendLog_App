@@ -68,3 +68,8 @@ button.filter.on { background: #2a6; color: #fff; border-color: #185; }
 .panel dl { display: grid; grid-template-columns: 11rem 1fr; gap: 2px 8px; margin: 6px 0; }
 .panel dt { font-weight: 600; } .panel dd { margin: 0; }
 .changes { max-height: 12rem; overflow: auto; background: #fff; border: 1px solid #ccd; padding: 6px; }
+
+.banner { padding: .4rem 16px; margin: 0; border-bottom: 1px solid #f59e0b; }
+.banner.warn { border-radius: 0; margin: 0; }
+.banner.error { border-bottom-color: #b91c1c; }
+.banner.muted { background: #f1f5f9; border-bottom-color: #cbd5e1; }
