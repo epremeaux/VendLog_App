@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+vendlog.config.json
+.vscode/
+# The logs folder is a separate repository (VendLog_Data)
+logs/
+logs.old-*/
+logs.new-*/

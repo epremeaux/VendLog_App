@@ -1,0 +1,6 @@
+{
+  "repo_path": "C:/path/to/vendLOG",
+  "logs_dir": "logs",
+  "host": "127.0.0.1",
+  "port": 8765
+}

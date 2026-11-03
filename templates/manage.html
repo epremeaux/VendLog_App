@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Manage logs - VendLog{% endblock %}
+{% block body %}
+<main>
+  <section id="list-pane">
+    <div class="toolbar" id="upload-box">
+      <div class="row">
+        <label>Machine (type new, or pick existing):
+          <input id="up-machine" list="machine-options" placeholder="e.g. RED-01" autocomplete="off">
+          <datalist id="machine-options"></datalist>
+        </label>
+        <label>Prepend to filenames (optional):
+          <input id="up-custom" placeholder="leave empty for none" autocomplete="off">
+        </label>
+      </div>
+      <p class="muted" id="up-folder"></p>
+      <p class="warn" id="up-dup" hidden></p>
+      <div class="row">
+        <label>Log capture date: <input type="date" id="up-date"></label>
+        <span class="muted">(optional; applied to all files in this upload)</span>
+      </div>
+      <div class="row">
+        <label>Machine maker (pick, or type a new one):
+          <input id="up-maker" list="maker-options" placeholder="e.g. Sanden" autocomplete="off">
+          <datalist id="maker-options"></datalist>
+        </label>
+        <span class="muted">(optional; new names are added to the list)</span>
+      </div>
+      <div class="field"><span>Tags for uploaded files</span><div id="up-tags"></div></div>
+      <div class="row">
+        <label class="upload">Upload log(s): <input type="file" id="upload-input" multiple></label>
+      </div>
+      <p class="muted" id="up-preview"></p>
+    </div>
+    <div id="bulk-bar" class="toolbar" hidden>
+      <div class="row"><strong id="bulk-count"></strong><button type="button" id="bulk-clear">Clear selection</button></div>
+      <div class="field"><span>Add tags to selected</span><div id="bulk-add"></div></div>
+      <div class="field"><span>Remove tags from selected</span><div id="bulk-remove"></div></div>
+      <div class="row"><button type="button" id="bulk-apply" class="primary">Apply to selected</button></div>
+    </div>
+    <table id="files">
+      <thead><tr><th><input type="checkbox" id="select-all" title="Select all"></th><th>File</th><th>Size</th><th>Recorded</th><th>Tags</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="empty" hidden>No log files found.</p>
+    <details id="tag-manager">
+      <summary>Manage tags</summary>
+      <div class="row">
+        <input id="new-tag" placeholder="New tag name">
+        <button type="button" id="new-tag-btn">Add to vocabulary</button>
+      </div>
+      <table id="tag-table">
+        <thead><tr><th>Tag</th><th>Files</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </details>
+  </section>
+  <section id="detail-pane">
+    <p class="muted">Select a file.</p>
+  </section>
+</main>
+<datalist id="tag-options"></datalist>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='manage.js') }}"></script>{% endblock %}

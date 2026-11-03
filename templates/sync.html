@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Synchronise - VendLog{% endblock %}
+{% block body %}
+<main class="sync">
+  <section class="panel">
+    <h2>Repository status</h2>
+    <div id="st-body" class="muted">Loading...</div>
+    <div class="row">
+      <button type="button" id="b-refresh">Refresh (fetch)</button>
+    </div>
+  </section>
+
+  <section class="panel" id="sync-actions" hidden>
+    <h2>Synchronise</h2>
+    <div class="row">
+      <button type="button" id="b-pull" class="primary">Pull logs &amp; metadata from GitHub</button>
+    </div>
+    <div class="field"><span>Commit message (optional)</span><input id="commit-msg" placeholder="e.g. Add Cheerio door logs"></div>
+    <div class="row">
+      <button type="button" id="b-push" class="primary">Commit &amp; push logs to GitHub</button>
+    </div>
+    <p class="muted">Push never overwrites the other person's work: if GitHub has newer commits you must pull first. Changes under logs/ are committed together with the push.</p>
+    <pre id="changes" class="changes" hidden></pre>
+  </section>
+
+  <section class="panel">
+    <h2>Data repository</h2>
+    <p class="muted">The logs and metadata live in their own Git repository, separate from the app. Sign-in is handled by Git Credential Manager; never put a token in the URL.</p>
+    <div class="field"><span>Repository URL</span>
+      <input id="repo-url" value="{{ default_url }}" placeholder="https://github.com/owner/repo.git" autocomplete="off" disabled>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="unlock"> Unlock to change repository</label>
+      <button type="button" id="b-prepare" disabled>Step 1: Check repository</button>
+    </div>
+    <div id="confirm-box" class="warn" hidden>
+      <p id="confirm-msg"></p>
+      <div class="row">
+        <input id="confirm-text" autocomplete="off">
+        <button type="button" id="b-connect" class="danger">Step 2: Replace local data</button>
+        <button type="button" id="b-cancel">Cancel</button>
+      </div>
+    </div>
+  </section>
+  <p id="msg" class="muted"></p>
+</main>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='sync.js') }}"></script>{% endblock %}

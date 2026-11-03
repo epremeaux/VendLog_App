@@ -1,0 +1,137 @@
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from app import create_app  # noqa: E402
+from vendlog import preview  # noqa: E402
+
+
+def meta(tags, machine="", description=""):
+    return json.dumps({"tags": tags, "machine": machine, "datetime": "", "description": description})
+
+
+@pytest.fixture
+def client(tmp_path):
+    logs = tmp_path / "logs"
+    (logs / "Cheerio").mkdir(parents=True)
+    (logs / "Cheerio" / "run1.log").write_text("boot\nKeyboard Entry: 12\ncoin inserted\n", encoding="utf-8")
+    (logs / "Cheerio" / "run1.log.meta.json").write_text(meta(["JVMA", "Keyboard entry"], "Cheerio"))
+    (logs / "door.log").write_text("DOOR OPEN at 10:00\nnothing\n", encoding="utf-8")
+    (logs / "door.log.meta.json").write_text(meta(["JVMA", "Door open"]))
+    (logs / "plain.log").write_text("hello\n", encoding="utf-8")
+    return create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+
+
+def paths(client, **params):
+    r = client.get("/api/search", query_string=params)
+    assert r.status_code == 200
+    return sorted(f["path"] for f in r.json["files"])
+
+
+def test_pages(client):
+    for url in ("/", "/manage", "/search"):
+        r = client.get(url)
+        assert r.status_code == 200 and b"VendLog" in r.data
+
+
+def test_empty_query_lists_all(client):
+    assert paths(client) == ["Cheerio/run1.log", "door.log", "plain.log"]
+
+
+def test_and_or_tags_case_insensitive(client):
+    assert paths(client, q="keyboard entry, jvma") == ["Cheerio/run1.log"]
+    assert paths(client, q="keyboard entry, door open", mode="or") == ["Cheerio/run1.log", "door.log"]
+    assert paths(client, q="keyboard entry, door open") == []
+    assert paths(client, q="JVMA") == ["Cheerio/run1.log", "door.log"]
+
+
+def test_filename_and_machine(client):
+    assert paths(client, q="PLAIN") == ["plain.log"]
+    assert paths(client, q="cheerio") == ["Cheerio/run1.log"]
+
+
+def test_tag_filters_exact(client):
+    assert paths(client, tag="JVMA") == ["Cheerio/run1.log", "door.log"]
+    assert paths(client, tag=["JVMA", "door open"]) == ["door.log"]
+    assert paths(client, tag=["door open", "keyboard entry"], mode="or") == ["Cheerio/run1.log", "door.log"]
+    assert paths(client, tag="JVM") == []  # exact, not substring
+    assert paths(client, q="plain", tag="JVMA") == []
+
+
+def test_content_search(client):
+    assert paths(client, q="coin inserted") == []
+    r = client.get("/api/search", query_string={"q": "coin inserted", "content": "1"}).json
+    assert [f["path"] for f in r["files"]] == ["Cheerio/run1.log"]
+    assert r["files"][0]["hits"] == [{"line": 3, "text": "coin inserted"}]
+    assert paths(client, q="door open", content="1") == ["door.log"]  # tag + text
+    assert paths(client, q="hello, coin inserted", content="1") == []
+    assert paths(client, q="hello, coin inserted", content="1", mode="or") == ["Cheerio/run1.log", "plain.log"]
+
+
+def test_preview_window(tmp_path):
+    p = tmp_path / "big.log"
+    p.write_bytes(b"".join(b"line %d\r\n" % i for i in range(1, 2503)))
+    d = preview.window(p, 0, 3)
+    assert d["total"] == 2502 and d["lines"] == ["line 1", "line 2", "line 3"]
+    assert preview.window(p, 1999, 3)["lines"] == ["line 2000", "line 2001", "line 2002"]
+    assert preview.window(p, 2500, 50)["lines"] == ["line 2501", "line 2502"]
+    assert preview.window(p, 9999, 5)["lines"] == []
+
+
+def test_preview_edge_cases(tmp_path):
+    empty = tmp_path / "e.log"
+    empty.write_bytes(b"")
+    assert preview.window(empty, 0, 10) == {"encoding": "utf-8", "total": 0, "offset": 0, "lines": []}
+    no_nl = tmp_path / "n.log"
+    no_nl.write_bytes(b"a\nb")
+    assert preview.window(no_nl, 0, 10)["lines"] == ["a", "b"]
+    bom = tmp_path / "b.log"
+    bom.write_bytes(b"\xef\xbb\xbfhello\n")
+    assert preview.window(bom, 0, 5)["lines"] == ["hello"]
+
+
+def test_encodings(tmp_path):
+    u16 = tmp_path / "u16.log"
+    u16.write_bytes("first\r\nsecond \u00e9\r\nthird\r\n".encode("utf-16"))
+    d = preview.window(u16, 1, 5)
+    assert d["encoding"] == "utf-16" and d["total"] == 3 and d["lines"] == ["second \u00e9", "third"]
+    cp = tmp_path / "cp.log"
+    cp.write_bytes("caf\u00e9\n".encode("cp1252"))
+    d = preview.window(cp, 0, 5)
+    assert d["encoding"] == "cp1252" and d["lines"] == ["caf\u00e9"]
+    assert preview.find(cp, "CAF\u00c9")["matches"] == [{"line": 1, "text": "caf\u00e9"}]
+
+
+def test_find_matches_window_line_numbers(tmp_path):
+    p = tmp_path / "f.log"
+    p.write_bytes(b"a\rb\nneedle\r\nx\nNEEDLE again\n")  # lone \r is not a line break
+    m = preview.find(p, "needle")["matches"]
+    assert [x["line"] for x in m] == [2, 4]
+    assert preview.window(p, 1, 1)["lines"] == ["needle"]
+
+
+def test_preview_api(client):
+    r = client.get("/api/preview", query_string={"path": "Cheerio/run1.log", "offset": 1, "limit": 1})
+    assert r.json["lines"] == ["Keyboard Entry: 12"] and r.json["total"] == 3
+    r = client.get("/api/preview/find", query_string={"path": "Cheerio/run1.log", "q": "keyboard"})
+    assert r.json["matches"][0]["line"] == 2
+    assert client.get("/api/preview", query_string={"path": "../app.py"}).status_code in (400, 404)
+    assert client.get("/api/preview", query_string={"path": "logs/tags.json"}).status_code == 404
+    assert client.get("/api/preview", query_string={"path": "door.log", "offset": "x"}).status_code == 400
+
+
+def test_maker_field(client):
+    H = {"X-VendLog": "1"}
+    assert client.get("/api/makers").json["makers"] == ["Fuji Denki", "JVMA", "Panasonic", "Sanden", "UNKNOWN"]
+    import io
+    r = client.post("/api/files", headers=H, content_type="multipart/form-data",
+                    data={"files": (io.BytesIO(b"x\n"), "m.log"), "maker": "  Acme   Corp "})
+    assert r.json["saved"][0]["maker"] == "Acme Corp"
+    assert "Acme Corp" in client.get("/api/makers").json["makers"]
+    assert paths(client, q="acme") == ["m.log"]
+    r = client.put("/api/files/m.log", headers=H, json={"maker": "Sanden"})
+    assert r.json["maker"] == "Sanden" and r.json["tags"] == []
+    assert client.get("/api/files").json["files"][0]["maker"] == ""

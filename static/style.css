@@ -1,0 +1,70 @@
+body { font: 14px/1.4 system-ui, sans-serif; margin: 0; color: #222; }
+header { background: #234; color: #fff; padding: 8px 16px; }
+h1 { margin: 0; font-size: 18px; }
+main { display: flex; gap: 16px; padding: 16px; }
+#list-pane { flex: 2; min-width: 0; }
+#detail-pane { flex: 1; min-width: 0; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #ddd; }
+tbody tr { cursor: pointer; }
+tbody tr:hover, tbody tr.sel { background: #eef4ff; }
+.tag { display: inline-block; background: #dde8f7; border-radius: 3px; padding: 0 6px; margin: 1px; font-size: 12px; }
+.muted { color: #777; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; }
+dt { font-weight: 600; }
+dd { margin: 0; }
+.row { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
+.toolbar { margin-top: 0; }
+.field { display: block; margin: 6px 0; }
+.field span { display: block; font-weight: 600; font-size: 12px; }
+.field input, .field textarea { width: 100%; box-sizing: border-box; }
+.row input { flex: 1; min-width: 0; }
+.chips { min-height: 24px; }
+.tag .x { border: 0; background: none; cursor: pointer; padding: 0 2px; color: #345; }
+button { cursor: pointer; }
+button.primary { background: #2a6; color: #fff; border: 1px solid #185; padding: 3px 12px; }
+button.danger { color: #a00; }
+.error { color: #a00; }
+details { margin-top: 16px; }
+summary { cursor: pointer; font-weight: 600; }
+h2, h3 { margin: 8px 0 4px; }
+header { display: flex; align-items: baseline; gap: 24px; }
+header h1 a { color: #fff; text-decoration: none; }
+nav a { color: #bcd; text-decoration: none; margin-right: 16px; padding-bottom: 2px; }
+nav a:hover { color: #fff; }
+nav a.cur { color: #fff; border-bottom: 2px solid #7af; }
+.home { gap: 24px; }
+.card { flex: 1; max-width: 360px; border: 1px solid #ccd; border-radius: 6px; padding: 8px 16px; text-decoration: none; color: inherit; background: #f8f9fc; }
+.card:hover { border-color: #57a; background: #eef4ff; }
+.search-layout { align-items: flex-start; }
+#results-pane { flex: 1; min-width: 0; max-width: 560px; }
+#preview-pane { flex: 2; min-width: 0; position: sticky; top: 8px; }
+#results { max-height: 75vh; overflow-y: auto; }
+.result { border: 1px solid #dde; border-radius: 4px; padding: 6px 8px; margin-bottom: 6px; cursor: pointer; }
+.result:hover, .result.sel { background: #eef4ff; border-color: #8ab; }
+.r-name { font-weight: 600; word-break: break-all; }
+.hit { font-family: Consolas, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; color: #444; }
+.n { color: #999; margin-right: 8px; user-select: none; }
+mark { background: #ffe066; padding: 0; }
+.opts label { margin-right: 12px; }
+button.filter { border: 1px solid #adc; cursor: pointer; }
+button.filter.on { background: #2a6; color: #fff; border-color: #185; }
+.preview-head { margin-bottom: 4px; }
+.log-lines { height: 68vh; overflow: auto; border: 1px solid #ccd; background: #fff; font: 12px/1.45 Consolas, monospace; }
+.ln { white-space: pre; padding: 0 6px; }
+.ln .n { display: inline-block; min-width: 56px; text-align: right; }
+.ln.cur { background: #fff3b0; }
+.narrow { max-width: 110px; flex: 0 1 110px !important; }
+#upload-box, #bulk-bar { border: 1px solid #ccd; border-radius: 4px; padding: 6px 10px; margin-bottom: 10px; background: #f8f9fc; }
+#bulk-bar { background: #fff8e6; border-color: #e0c070; }
+#bulk-bar[hidden] { display: none; }
+
+.warn { color: #b45309; background: #fffbeb; border: 1px solid #f59e0b; padding: .4rem .6rem; border-radius: 4px; margin: .3rem 0; }
+
+#up-custom.grow { flex: 1 1 14rem; min-width: 12rem; }
+
+.sync { flex-direction: column; max-width: 760px; }
+.panel { border: 1px solid #ccd; border-radius: 6px; padding: 4px 16px 10px; background: #f8f9fc; }
+.panel dl { display: grid; grid-template-columns: 11rem 1fr; gap: 2px 8px; margin: 6px 0; }
+.panel dt { font-weight: 600; } .panel dd { margin: 0; }
+.changes { max-height: 12rem; overflow: auto; background: #fff; border: 1px solid #ccd; padding: 6px; }

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}VendLog{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <h1><a href="{{ url_for('home') }}">VendLog</a></h1>
+  <nav>
+    <a href="{{ url_for('home') }}" {% if page == 'home' %}class="cur"{% endif %}>Home</a>
+    <a href="{{ url_for('manage') }}" {% if page == 'manage' %}class="cur"{% endif %}>Manage logs</a>
+    <a href="{{ url_for('search_page') }}" {% if page == 'search' %}class="cur"{% endif %}>Search &amp; view logs</a>
+    <a href="{{ url_for('sync_page') }}" {% if page == 'sync' %}class="cur"{% endif %}>Synchronise</a>
+  </nav>
+</header>
+{% block body %}{% endblock %}
+<script src="{{ url_for('static', filename='common.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

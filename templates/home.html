@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="home">
+  <a class="card" href="{{ url_for('manage') }}">
+    <h2>Manage logs</h2>
+    <p>Upload log files, edit tags and metadata, rename and delete files, manage the tag vocabulary.</p>
+  </a>
+  <a class="card" href="{{ url_for('search_page') }}">
+    <h2>Search &amp; view logs</h2>
+    <p>Find logs by filename, tags or file contents, and read them in a preview pane.</p>
+  </a>
+  <a class="card" href="{{ url_for('sync_page') }}">
+    <h2>Synchronise</h2>
+    <p>Pull logs and metadata from GitHub, push yours, or connect a different data repository.</p>
+  </a>
+</main>
+{% endblock %}
