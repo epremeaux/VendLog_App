@@ -87,15 +87,15 @@ def test_app_update_flow(tmp_path):
     r = c.post("/api/app/check", headers=H, json={}).json
     assert r["connected"] and not r.get("update_available") and r["message"] == "The app is up to date."
 
-    (work / "vendlog" / "__init__.py").write_text('__version__ = "0.2.0"\n')
+    (work / "vendlog" / "__init__.py").write_text('__version__ = "0.9.0"\n')
     (work / "requirements.txt").write_text("Flask\n")
     git(work, "add", "-A"); git(work, "commit", "-m", "v2"); git(work, "push", "origin", "main")
     r = c.post("/api/app/check", headers=H, json={}).json
-    assert r["update_available"] and r["latest_version"] == "0.2.0" and r["can_update"] and r["behind"] == 1
+    assert r["update_available"] and r["latest_version"] == "0.9.0" and r["can_update"] and r["behind"] == 1
 
     r = c.post("/api/app/update", headers=H, json={}).json
     assert r["restart"] and "pip install" in r["message"]
-    assert '0.2.0' in (appcopy / "vendlog" / "__init__.py").read_text()
+    assert '0.9.0' in (appcopy / "vendlog" / "__init__.py").read_text()
     # the running process still has the old code loaded until it is restarted
     r = c.post("/api/app/check", headers=H, json={}).json
     assert r["restart_needed"] and not r["can_update"] and "start it again" in r["message"]
@@ -103,7 +103,7 @@ def test_app_update_flow(tmp_path):
 
 def test_app_update_refuses_local_changes(tmp_path):
     bare, appcopy, work = make_app_repo(tmp_path)
-    (work / "vendlog" / "__init__.py").write_text('__version__ = "0.2.0"\n')
+    (work / "vendlog" / "__init__.py").write_text('__version__ = "0.9.0"\n')
     git(work, "commit", "-am", "v2"); git(work, "push", "origin", "main")
     (appcopy / "keep.txt").write_text("edited locally")
     c = app_client(tmp_path, appcopy)
