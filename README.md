@@ -93,6 +93,7 @@ Push before closing VendLog so your colleague gets your work.
   that applies to either the upload date or the log's recorded date.
 - Click a result to preview it. Text files are paged so large files are not loaded whole.
   Images (png, jpg, gif, webp, bmp, svg) are shown directly, with Fit to window, Actual size and open-in-new-tab.
+  PDFs are shown in your browser's built-in PDF viewer (content search skips them).
   Use the find box with prev/next, or go to a line. Text encodings utf-8, utf-16 and cp1252 are detected.
 
 ### Synchronise

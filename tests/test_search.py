@@ -1,4 +1,4 @@
-import json
+﻿import json
 import sys
 from pathlib import Path
 
@@ -291,3 +291,22 @@ def test_search_folder_filter(tmp_path):
     assert names("folder=Pepsi&q=b") == ["Pepsi/b.log"]
     assert names("folder=Pepsi&q=a") == []
     assert len(names("")) == 3
+
+
+def test_pdf_preview(tmp_path):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from app import create_app
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "doc.PDF").write_bytes(b"%PDF-1.4\n%%EOF\n")
+    (logs / "n.txt").write_text("hello pdf\n")
+    c = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+    kinds = {f["name"]: f["kind"] for f in c.get("/api/files").get_json()["files"]}
+    assert kinds == {"doc.PDF": "pdf", "n.txt": "text"}
+    r = c.get("/api/pdf?path=doc.PDF")
+    assert r.status_code == 200 and r.mimetype == "application/pdf" and r.data.startswith(b"%PDF")
+    assert c.get("/api/pdf?path=n.txt").status_code == 400
+    assert c.get("/api/preview?path=doc.PDF").status_code == 400
+    found = c.get("/api/search?q=hello&content=1").get_json()["files"]
+    assert [f["path"] for f in found] == ["n.txt"]

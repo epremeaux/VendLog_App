@@ -161,6 +161,10 @@ $("pv-save").onclick = async () => {
         const url = "/api/image?path=" + encodeURIComponent(P.path);
         $("pv-img").src = url;
         $("pv-open").href = url;
+      } else if (P.kind === "pdf") {
+        const url = "/api/pdf?path=" + encodeURIComponent(P.path);
+        $("pv-pdf-frame").src = url;
+        $("pv-pdf-open").href = url;
       } else await loadWindow(P.offset);
     }
   } catch (e) {
@@ -180,11 +184,21 @@ async function openFile(f, line) {
   $("preview").hidden = false;
   $("pv-name").textContent = f.path;
   showMeta(f);
-  const isImage = f.kind === "image";
-  P.kind = isImage ? "image" : "text";
-  $("pv-text").hidden = isImage;
+  const isImage = f.kind === "image", isPdf = f.kind === "pdf";
+  P.kind = f.kind || "text";
+  $("pv-text").hidden = isImage || isPdf;
   $("pv-image").hidden = !isImage;
-  if (!isImage) $("pv-meta-box").open = true;
+  $("pv-pdf").hidden = !isPdf;
+  if (!isImage && !isPdf) $("pv-meta-box").open = true;
+  if (!isPdf) $("pv-pdf-frame").removeAttribute("src");
+  if (isPdf) {
+    $("pv-meta-box").open = false;
+    const url = "/api/pdf?path=" + encodeURIComponent(f.path);
+    $("pv-pdf-frame").src = url;
+    $("pv-pdf-open").href = url;
+    $("pv-info").textContent = fmtSize(f.size) + " \u2022 PDF";
+    return;
+  }
   if (isImage) {
     $("pv-meta-box").open = false;
     const url = "/api/image?path=" + encodeURIComponent(f.path);

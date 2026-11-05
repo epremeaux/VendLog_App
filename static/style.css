@@ -78,6 +78,7 @@ button.filter.on { background: #2a6; color: #fff; border-color: #185; }
 .meta-edit .row .field { flex: 1; min-width: 120px; }
 
 .image-scroll { max-height: calc(100vh - 190px); overflow: auto; border: 1px solid #cbd5e1; background: #f1f5f9; padding: 4px; text-align: center; }
+.pdf-frame { width: 100%; height: calc(100vh - 220px); min-height: 300px; border: 1px solid #cbd5e1; background: #f1f5f9; }
 .image-scroll img { display: inline-block; }
 .image-scroll img.fit { max-width: 100%; max-height: calc(100vh - 210px); width: auto; height: auto; object-fit: contain; }
 #pv-meta-box > summary { cursor: pointer; font-weight: 600; margin-bottom: 4px; }

@@ -13,6 +13,7 @@ VOCAB_FILE = "tags.json"
 MANIFEST_FILE = "vendlog.json"
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
                ".webp": "image/webp", ".bmp": "image/bmp", ".svg": "image/svg+xml"}
+PDF_TYPE = ".pdf"
 META_FIELDS = ("tags", "machine", "maker", "datetime", "description", "uploaded")
 DEFAULT_MAKERS = ("Fuji Denki", "Sanden", "Panasonic", "JVMA", "UNKNOWN")
 
@@ -109,7 +110,8 @@ class Store:
             "path": p.relative_to(self.root).as_posix(),
             "name": p.name,
             "size": st.st_size,
-            "kind": "image" if p.suffix.lower() in IMAGE_TYPES else "text",
+            "kind": ("image" if p.suffix.lower() in IMAGE_TYPES
+                     else "pdf" if p.suffix.lower() == PDF_TYPE else "text"),
             "modified": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(timespec="seconds"),
             **self.read_meta(p),
         }

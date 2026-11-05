@@ -201,11 +201,23 @@ def create_app(cfg: dict | None = None) -> Flask:
         resp.headers["X-Content-Type-Options"] = "nosniff"
         return resp
 
+    @app.get("/api/pdf")
+    def api_pdf():
+        p = _preview_path()
+        if p.suffix.lower() != ".pdf":
+            raise StoreError("Not a PDF file")
+        resp = send_file(p, mimetype="application/pdf", conditional=True, max_age=0)
+        resp.headers["Content-Disposition"] = "inline"
+        resp.headers["X-Content-Type-Options"] = "nosniff"
+        return resp
+
     @app.get("/api/preview")
     def api_preview():
         p = _preview_path()
         if p.suffix.lower() in IMAGE_TYPES:
             raise StoreError("This is an image; use /api/image")
+        if p.suffix.lower() == ".pdf":
+            raise StoreError("This is a PDF; use /api/pdf")
         try:
             offset, limit = int(request.args.get("offset", 0)), int(request.args.get("limit", 500))
         except ValueError:
