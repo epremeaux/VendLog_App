@@ -185,3 +185,27 @@ def test_bulk_move(client, tmp_path):
     assert client.post("/api/bulk-move", headers=H, json={"paths": [], "machine": "X"}).status_code == 400
     assert client.post("/api/bulk-move", headers=H, json={"paths": ["a.log"], "machine": " "}).status_code == 400
     assert client.post("/api/bulk-move", headers=H, json={"paths": ["../app.py"], "machine": "X"}).status_code in (400, 404)
+
+
+def test_image_preview_and_search(tmp_path):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from app import create_app
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    png = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489")
+    (logs / "shot.PNG").write_bytes(png)
+    (logs / "note.txt").write_text("hello\n")
+    (logs / "x.svg").write_text("<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>")
+    c = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+    kinds = {f["name"]: f["kind"] for f in c.get("/api/files").get_json()["files"]}
+    assert kinds == {"shot.PNG": "image", "note.txt": "text", "x.svg": "image"}
+    r = c.get("/api/image?path=shot.PNG")
+    assert r.status_code == 200 and r.mimetype == "image/png" and r.data == png
+    assert r.headers["X-Content-Type-Options"] == "nosniff"
+    assert "sandbox" in c.get("/api/image?path=x.svg").headers["Content-Security-Policy"]
+    assert c.get("/api/image?path=note.txt").status_code == 400
+    assert c.get("/api/preview?path=shot.PNG").status_code == 400
+    assert c.get("/api/image?path=../app.py").status_code in (400, 404)
+    res = c.get("/api/search?q=hello&content=1").get_json()
+    assert [f["name"] for f in res["files"]] == ["note.txt"]

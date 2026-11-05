@@ -76,3 +76,7 @@ button.filter.on { background: #2a6; color: #fff; border-color: #185; }
 
 .meta-edit { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 4px; padding: 6px 8px; margin-bottom: 8px; }
 .meta-edit .row .field { flex: 1; min-width: 120px; }
+
+.image-scroll { max-height: 70vh; overflow: auto; border: 1px solid #cbd5e1; background: #f1f5f9; padding: 4px; }
+.image-scroll img { display: block; }
+.image-scroll img.fit { max-width: 100%; height: auto; }

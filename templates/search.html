@@ -39,6 +39,7 @@
         </div>
         <p class="muted">Changing the machine moves the file to logs/&lt;machine&gt;/ when you save.</p>
       </div>
+      <div id="pv-text">
       <div class="row">
         <input id="pv-find" placeholder="Find in this file">
         <button type="button" id="pv-find-btn">Find</button>
@@ -54,6 +55,15 @@
         <span class="muted" id="pv-range"></span>
       </div>
       <div id="pv-lines" class="log-lines"></div>
+      </div>
+      <div id="pv-image" class="image-view" hidden>
+        <div class="row">
+          <button type="button" id="pv-fit">Fit to window</button>
+          <button type="button" id="pv-actual">Actual size</button>
+          <a id="pv-open" target="_blank" rel="noopener">Open in new tab</a>
+        </div>
+        <div class="image-scroll"><img id="pv-img" alt=""></div>
+      </div>
     </div>
   </section>
 </main>

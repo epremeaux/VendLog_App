@@ -134,7 +134,13 @@ $("pv-save").onclick = async () => {
     showMeta(f);
     msg.textContent = moved ? "Saved. File moved to " + f.path + "." : "Saved.";
     await Promise.all([loadOptions(), loadTagFilters(), runSearch()]);
-    if (moved) await loadWindow(P.offset);
+    if (moved) {
+      if (P.kind === "image") {
+        const url = "/api/image?path=" + encodeURIComponent(P.path);
+        $("pv-img").src = url;
+        $("pv-open").href = url;
+      } else await loadWindow(P.offset);
+    }
   } catch (e) {
     msg.className = "error";
     msg.textContent = e.message;
@@ -152,6 +158,22 @@ async function openFile(f, line) {
   $("preview").hidden = false;
   $("pv-name").textContent = f.path;
   showMeta(f);
+  const isImage = f.kind === "image";
+  P.kind = isImage ? "image" : "text";
+  $("pv-text").hidden = isImage;
+  $("pv-image").hidden = !isImage;
+  if (isImage) {
+    const url = "/api/image?path=" + encodeURIComponent(f.path);
+    const img = $("pv-img");
+    img.className = "fit";
+    img.alt = f.name;
+    img.src = url;
+    $("pv-open").href = url;
+    $("pv-info").textContent = fmtSize(f.size) + " \u2022 image";
+    img.onload = () => { $("pv-info").textContent = `${img.naturalWidth}\u00d7${img.naturalHeight} px \u2022 ${fmtSize(f.size)}`; };
+    img.onerror = () => { $("pv-info").textContent = "This image could not be displayed."; };
+    return;
+  }
   $("pv-find").value = q;
   $("pv-matches").textContent = "";
   await loadWindow(line ? Math.floor((line - 1) / PAGE) * PAGE : 0, line);
@@ -214,6 +236,8 @@ $("search-form").onsubmit = e => { e.preventDefault(); runSearch().catch(fail); 
 document.querySelectorAll("input[name=mode]").forEach(r => r.onchange = () => runSearch().catch(fail));
 $("content").onchange = () => runSearch().catch(fail);
 
+$("pv-fit").onclick = () => { $("pv-img").className = "fit"; };
+$("pv-actual").onclick = () => { $("pv-img").className = ""; };
 $("pv-find-btn").onclick = () => runFind($("pv-find").value).catch(fail);
 $("pv-find").onkeydown = e => {
   if (e.key !== "Enter") return;

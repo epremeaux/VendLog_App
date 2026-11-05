@@ -5,12 +5,12 @@ import json
 import time
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file
 
 from vendlog import config, preview, version
 from vendlog import search as search_mod
 from vendlog.gitops import AppRepo, Git
-from vendlog.store import Store, StoreError, norm_tags
+from vendlog.store import IMAGE_TYPES, Store, StoreError, norm_tags
 
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 
@@ -145,9 +145,23 @@ def create_app(cfg: dict | None = None) -> Flask:
         rel = request.args.get("path", "")
         return store.resolve(store.get(rel)["path"])
 
+    @app.get("/api/image")
+    def api_image():
+        p = _preview_path()
+        mime = IMAGE_TYPES.get(p.suffix.lower())
+        if not mime:
+            raise StoreError("Not an image file")
+        resp = send_file(p, mimetype=mime, conditional=True, max_age=0)
+        # SVG can carry scripts; sandbox it and stop type sniffing for every image.
+        resp.headers["Content-Security-Policy"] = "sandbox; default-src 'none'; style-src 'unsafe-inline'"
+        resp.headers["X-Content-Type-Options"] = "nosniff"
+        return resp
+
     @app.get("/api/preview")
     def api_preview():
         p = _preview_path()
+        if p.suffix.lower() in IMAGE_TYPES:
+            raise StoreError("This is an image; use /api/image")
         try:
             offset, limit = int(request.args.get("offset", 0)), int(request.args.get("limit", 500))
         except ValueError:
