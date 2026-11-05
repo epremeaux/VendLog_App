@@ -3,21 +3,8 @@
 {% block body %}
 <main>
   <section id="list-pane">
-    <div class="toolbar" id="filter-box">
-      <div class="row">
-        <input id="f-text" type="search" placeholder="Filter by filename, machine, maker, description or tag" autocomplete="off">
-        <label><input type="checkbox" id="f-session"> This session</label>
-        <button type="button" id="f-clear">Clear filters</button>
-      </div>
-      <div class="field"><span>Filter by tag (files must have all selected)</span><div id="f-tags" class="chips"></div></div>
-      <div class="row opts">
-        <label><input type="radio" name="f-datekind" value="upload" checked> Upload date</label>
-        <label><input type="radio" name="f-datekind" value="recorded"> Log recorded date</label>
-        <label>From <input type="date" id="f-from"></label>
-        <label>To <input type="date" id="f-to"></label>
-      </div>
-      <p class="muted" id="f-summary"></p>
-    </div>
+    <details class="section" id="sec-upload" open>
+    <summary>Upload log files</summary>
     <div class="toolbar" id="upload-box">
       <div class="row">
         <label>Machine (type new, or pick existing):
@@ -47,6 +34,40 @@
       </div>
       <p class="muted" id="up-preview"></p>
     </div>
+    </details>
+
+    <details class="section" id="sec-filter" open>
+    <summary>Filter list</summary>
+    <div class="toolbar" id="filter-box">
+      <div class="row">
+        <input id="f-text" type="search" placeholder="Filter by filename, machine, maker, description or tag" autocomplete="off">
+        <label><input type="checkbox" id="f-session"> This session</label>
+        <button type="button" id="f-clear">Clear filters</button>
+      </div>
+      <div class="field"><span>Filter by tag (files must have all selected)</span><div id="f-tags" class="chips"></div></div>
+      <div class="row opts">
+        <label><input type="radio" name="f-datekind" value="upload" checked> Upload date</label>
+        <label><input type="radio" name="f-datekind" value="recorded"> Log recorded date</label>
+        <label>From <input type="date" id="f-from"></label>
+        <label>To <input type="date" id="f-to"></label>
+      </div>
+    </div>
+    </details>
+
+    <details class="section" id="tag-manager">
+      <summary>Manage tags</summary>
+      <div class="row">
+        <input id="new-tag" placeholder="New tag name">
+        <button type="button" id="new-tag-btn">Add to vocabulary</button>
+      </div>
+      <table id="tag-table">
+        <thead><tr><th>Tag</th><th>Files</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </details>
+
+    <details class="section" id="sec-files" open>
+    <summary>Files <span class="muted" id="f-summary"></span></summary>
     <div id="bulk-bar" class="toolbar" hidden>
       <div class="row"><strong id="bulk-count"></strong><button type="button" id="bulk-clear">Clear selection</button></div>
       <div class="field"><span>Add tags to selected</span><div id="bulk-add"></div></div>
@@ -68,16 +89,6 @@
     <p id="empty" hidden>No log files found.</p>
     <p id="no-match" class="muted" hidden>No files match the filters.</p>
     </div>
-    <details id="tag-manager">
-      <summary>Manage tags</summary>
-      <div class="row">
-        <input id="new-tag" placeholder="New tag name">
-        <button type="button" id="new-tag-btn">Add to vocabulary</button>
-      </div>
-      <table id="tag-table">
-        <thead><tr><th>Tag</th><th>Files</th><th></th></tr></thead>
-        <tbody></tbody>
-      </table>
     </details>
   </section>
   <section id="detail-pane">

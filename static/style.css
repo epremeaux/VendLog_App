@@ -86,3 +86,9 @@ button.filter.on { background: #2a6; color: #fff; border-color: #185; }
 #files-scroll thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; box-shadow: 0 1px 0 #cbd5e1; }
 #filter-box .row.opts { flex-wrap: wrap; }
 #filter-box .row input[type=date] { flex: 0 0 auto; }
+
+details.section { border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; margin: 0 0 8px; }
+details.section > summary { font-size: 15px; padding: 2px 0; }
+details.section[open] > summary { margin-bottom: 4px; }
+details.section .toolbar { margin-bottom: 4px; }
+#f-summary { font-weight: normal; margin-left: 8px; }
