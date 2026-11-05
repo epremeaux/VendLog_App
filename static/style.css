@@ -1,4 +1,4 @@
-body { font: 14px/1.4 system-ui, sans-serif; margin: 0; color: #222; }
+﻿body { font: 14px/1.4 system-ui, sans-serif; margin: 0; color: #222; }
 header { background: #234; color: #fff; padding: 8px 16px; }
 h1 { margin: 0; font-size: 18px; }
 main { display: flex; gap: 16px; padding: 16px; }
@@ -77,6 +77,7 @@ button.filter.on { background: #2a6; color: #fff; border-color: #185; }
 .meta-edit { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 4px; padding: 6px 8px; margin-bottom: 8px; }
 .meta-edit .row .field { flex: 1; min-width: 120px; }
 
-.image-scroll { max-height: 70vh; overflow: auto; border: 1px solid #cbd5e1; background: #f1f5f9; padding: 4px; }
-.image-scroll img { display: block; }
-.image-scroll img.fit { max-width: 100%; height: auto; }
+.image-scroll { max-height: calc(100vh - 190px); overflow: auto; border: 1px solid #cbd5e1; background: #f1f5f9; padding: 4px; text-align: center; }
+.image-scroll img { display: inline-block; }
+.image-scroll img.fit { max-width: 100%; max-height: calc(100vh - 210px); width: auto; height: auto; object-fit: contain; }
+#pv-meta-box > summary { cursor: pointer; font-weight: 600; margin-bottom: 4px; }

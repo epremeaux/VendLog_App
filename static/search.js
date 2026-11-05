@@ -162,7 +162,9 @@ async function openFile(f, line) {
   P.kind = isImage ? "image" : "text";
   $("pv-text").hidden = isImage;
   $("pv-image").hidden = !isImage;
+  if (!isImage) $("pv-meta-box").open = true;
   if (isImage) {
+    $("pv-meta-box").open = false;
     const url = "/api/image?path=" + encodeURIComponent(f.path);
     const img = $("pv-img");
     img.className = "fit";
