@@ -238,6 +238,16 @@ $("search-form").onsubmit = e => { e.preventDefault(); runSearch().catch(fail); 
 document.querySelectorAll("input[name=mode]").forEach(r => r.onchange = () => runSearch().catch(fail));
 $("content").onchange = () => runSearch().catch(fail);
 
+$("pv-external").onclick = async () => {
+  if (!P.path) return;
+  const b = $("pv-external");
+  try {
+    await api("/api/open-external", { method: "POST", json: { path: P.path } });
+    b.textContent = "Opened \u2713";
+    setTimeout(() => { b.textContent = "Open in external editor"; }, 2000);
+  } catch (e) { alert(e.message); }
+};
+
 $("pv-fit").onclick = () => { $("pv-img").className = "fit"; };
 $("pv-actual").onclick = () => { $("pv-img").className = ""; };
 $("pv-find-btn").onclick = () => runFind($("pv-find").value).catch(fail);

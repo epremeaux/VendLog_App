@@ -13,5 +13,18 @@
     <h2>Synchronise</h2>
     <p>Pull logs and metadata from GitHub, push yours, or connect a different data repository.</p>
   </a>
+  <section class="card settings">
+    <h2>Settings</h2>
+    <label class="field">External text editor (optional)
+      <input id="editor-path" placeholder="C:\Program Files\Notepad++\notepad++.exe" autocomplete="off">
+    </label>
+    <p class="muted">Full path of the program. The viewer's "Open in external editor" button runs it with the log file's path.
+      Saved on this computer only; it is not shared through Git.</p>
+    <div class="row">
+      <button type="button" id="editor-save" class="primary">Save</button>
+      <span id="editor-msg" class="muted"></span>
+    </div>
+  </section>
 </main>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='home.js') }}"></script>{% endblock %}

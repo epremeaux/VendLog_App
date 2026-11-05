@@ -209,3 +209,33 @@ def test_image_preview_and_search(tmp_path):
     assert c.get("/api/image?path=../app.py").status_code in (400, 404)
     res = c.get("/api/search?q=hello&content=1").get_json()
     assert [f["name"] for f in res["files"]] == ["note.txt"]
+
+
+def test_external_editor_settings_and_open(tmp_path, monkeypatch):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import app as app_module
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "a.log").write_text("hi\n")
+    cfgfile = tmp_path / "cfg.json"
+    cfgfile.write_text('{"port": 9999}')
+    editor = tmp_path / "editor.exe"
+    editor.write_text("x")
+    c = app_module.create_app({"repo_path": str(tmp_path), "logs_dir": "logs",
+                               "config_file": str(cfgfile)}).test_client()
+    H = {"X-VendLog": "1"}
+    assert c.post("/api/open-external", json={"path": "a.log"}, headers=H).status_code == 400  # not configured
+    assert c.post("/api/settings", json={"external_editor": str(tmp_path / "nope.exe")}, headers=H).status_code == 400
+    assert c.post("/api/settings", json={"external_editor": str(tmp_path)}, headers=H).status_code == 400
+    assert c.post("/api/settings", json={"external_editor": f'"{editor}"'}, headers=H).status_code == 200
+    saved = json.loads(cfgfile.read_text())
+    assert saved == {"port": 9999, "external_editor": str(editor)}
+    assert c.get("/api/settings").get_json()["external_editor"] == str(editor)
+
+    calls = []
+    monkeypatch.setattr(app_module.subprocess, "Popen", lambda cmd, **kw: calls.append(cmd))
+    assert c.post("/api/open-external", json={"path": "a.log"}, headers=H).status_code == 200
+    assert calls == [[str(editor), str(logs / "a.log")]]
+    assert c.post("/api/open-external", json={"path": "../x"}, headers=H).status_code in (400, 404)
+    assert c.post("/api/open-external", json={"path": "a.log"}).status_code == 403  # needs header

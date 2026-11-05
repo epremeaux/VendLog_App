@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -144,6 +146,42 @@ def create_app(cfg: dict | None = None) -> Flask:
     def _preview_path():
         rel = request.args.get("path", "")
         return store.resolve(store.get(rel)["path"])
+
+    @app.get("/api/settings")
+    def get_settings():
+        return jsonify(external_editor=cfg.get("external_editor", ""))
+
+    @app.post("/api/settings")
+    def set_settings():
+        d = request.get_json(silent=True) or {}
+        path = str(d.get("external_editor", "")).strip().strip('"')
+        if path:
+            if "\n" in path or "\0" in path:
+                raise StoreError("Invalid path")
+            p = Path(path).expanduser()
+            if not p.exists():
+                raise StoreError("That program was not found: " + path)
+            if p.is_dir() and not (p.suffix == ".app" and sys.platform == "darwin"):
+                raise StoreError("Enter the path of the program itself (for example notepad++.exe), not a folder")
+        config.save_key("external_editor", path, Path(cfg.get("config_file") or config.CONFIG_FILE))
+        cfg["external_editor"] = path
+        return jsonify(external_editor=path)
+
+    @app.post("/api/open-external")
+    def open_external():
+        """Open a log in the configured editor. Only the program path and the file path are passed; no shell."""
+        exe = cfg.get("external_editor", "")
+        if not exe:
+            raise StoreError("No external editor is configured. Set one on the Home page.")
+        p = store.resolve(store.get((request.get_json(silent=True) or {}).get("path", ""))["path"])
+        cmd = ["open", "-a", exe, str(p)] if exe.endswith(".app") else [exe, str(p)]
+        try:
+            subprocess.Popen(cmd, close_fds=True, stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError as e:
+            raise StoreError(f"Could not start the editor: {e}")
+        print(f"Opened {p.name} in {exe}", flush=True)
+        return jsonify(ok=True)
 
     @app.get("/api/image")
     def api_image():

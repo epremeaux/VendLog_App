@@ -61,6 +61,7 @@ Copy `vendlog.config.example.json` to `vendlog.config.json` (not committed):
 | `port` | `8765` | Change if the port is taken. |
 | `logs_dir` | `logs` | Where the data repo lives. |
 | `data_repo_url` | the VendLog_Data URL | Default repository offered on the Synchronise page. |
+| `external_editor` | empty | Program used by the viewer's "Open in external editor" button, e.g. `C:\Program Files\Notepad++\notepad++.exe`. Usually set on the Home page. Local to this computer. |
 | `auto_pull_on_start` | `false` | If `true`, the first page load after startup pulls GitHub changes, but only as a clean fast-forward with no local changes. Otherwise it just shows a banner. Never merges and never pushes. |
 
 ### Banners

@@ -22,3 +22,15 @@ def load(path: Path = CONFIG_FILE) -> dict:
         with open(path, encoding="utf-8") as f:
             cfg.update(json.load(f))
     return cfg
+
+
+def save_key(key: str, value, path: Path = CONFIG_FILE) -> None:
+    """Update one key in the local config file, leaving every other key as it was."""
+    data = {}
+    if path.exists():
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    data[key] = value
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(path)
