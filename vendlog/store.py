@@ -13,7 +13,7 @@ VOCAB_FILE = "tags.json"
 MANIFEST_FILE = "vendlog.json"
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
                ".webp": "image/webp", ".bmp": "image/bmp", ".svg": "image/svg+xml"}
-META_FIELDS = ("tags", "machine", "maker", "datetime", "description")
+META_FIELDS = ("tags", "machine", "maker", "datetime", "description", "uploaded")
 DEFAULT_MAKERS = ("Fuji Denki", "Sanden", "Panasonic", "JVMA", "UNKNOWN")
 
 
@@ -32,6 +32,10 @@ class Conflict(StoreError):
 _BAD_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 _RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
 MAX_TAG_LEN = 64
+
+
+def _now_utc() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def safe_filename(name: str) -> str:
@@ -68,6 +72,7 @@ def norm_tags(tags) -> list[str]:
 class Store:
     def __init__(self, logs_root: Path):
         self.root = Path(logs_root).resolve()
+        self.session_start = _now_utc()  # "this session" = since the server started
 
     def resolve(self, rel: str) -> Path:
         """Map a relative posix path to a file inside the logs folder."""
@@ -86,7 +91,7 @@ class Store:
                 and rel.as_posix() not in (VOCAB_FILE, MANIFEST_FILE, "README.md"))
 
     def read_meta(self, p: Path) -> dict:
-        meta = {"tags": [], "machine": "", "maker": "", "datetime": "", "description": ""}
+        meta = {"tags": [], "machine": "", "maker": "", "datetime": "", "description": "", "uploaded": ""}
         mp = p.with_name(p.name + META_SUFFIX)
         if mp.exists():
             try:
@@ -168,9 +173,9 @@ class Store:
         except Exception:
             dest.unlink(missing_ok=True)
             raise
-        if machine or tags or captured or maker:
-            self._write_json(self._sidecar(dest), {"tags": tags, "machine": machine, "maker": maker,
-                                                   "datetime": captured, "description": ""})
+        self._write_json(self._sidecar(dest), {"tags": tags, "machine": machine, "maker": maker,
+                                               "datetime": captured, "description": "",
+                                               "uploaded": _now_utc()})
         return self.info(dest)
 
     def bulk_tags(self, paths: list, add: list, remove: list) -> list[dict]:
@@ -252,7 +257,7 @@ class Store:
         meta = self.read_meta(p)
         meta.pop("error", None)
         for key in META_FIELDS:
-            if key not in data:
+            if key not in data or key == "uploaded":  # the upload time is recorded once and never edited
                 continue
             if key == "tags":
                 meta["tags"] = norm_tags(data["tags"])

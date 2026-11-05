@@ -3,6 +3,21 @@
 {% block body %}
 <main>
   <section id="list-pane">
+    <div class="toolbar" id="filter-box">
+      <div class="row">
+        <input id="f-text" type="search" placeholder="Filter by filename, machine, maker, description or tag" autocomplete="off">
+        <label><input type="checkbox" id="f-session"> This session</label>
+        <button type="button" id="f-clear">Clear filters</button>
+      </div>
+      <div class="field"><span>Filter by tag (files must have all selected)</span><div id="f-tags" class="chips"></div></div>
+      <div class="row opts">
+        <label><input type="radio" name="f-datekind" value="upload" checked> Upload date</label>
+        <label><input type="radio" name="f-datekind" value="recorded"> Log recorded date</label>
+        <label>From <input type="date" id="f-from"></label>
+        <label>To <input type="date" id="f-to"></label>
+      </div>
+      <p class="muted" id="f-summary"></p>
+    </div>
     <div class="toolbar" id="upload-box">
       <div class="row">
         <label>Machine (type new, or pick existing):
@@ -45,11 +60,14 @@
         <p class="warn" id="bulk-dup" hidden></p>
       </div>
     </div>
+    <div id="files-scroll">
     <table id="files">
-      <thead><tr><th><input type="checkbox" id="select-all" title="Select all"></th><th>File</th><th>Size</th><th>Recorded</th><th>Tags</th></tr></thead>
+      <thead><tr><th><input type="checkbox" id="select-all" title="Select all shown"></th><th>File</th><th>Size</th><th>Recorded</th><th>Tags</th></tr></thead>
       <tbody></tbody>
     </table>
     <p id="empty" hidden>No log files found.</p>
+    <p id="no-match" class="muted" hidden>No files match the filters.</p>
+    </div>
     <details id="tag-manager">
       <summary>Manage tags</summary>
       <div class="row">

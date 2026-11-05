@@ -1,13 +1,89 @@
 "use strict";
 
-const state = { files: [], current: null, tags: [], selected: new Set() };
+const state = { files: [], current: null, tags: [], selected: new Set(), sessionStart: "" };
+const F = { text: "", tags: new Set(), session: false, kind: "upload", from: "", to: "" };
+
+// ---- filtering -------------------------------------------------------------
+const localDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+// Upload time is stored once at upload; files added before that existed fall back to the file's modified time.
+function uploadDay(f) {
+  const d = new Date(f.uploaded || f.modified);
+  return isNaN(d) ? "" : localDate(d);
+}
+
+function recordedDay(f) { return (f.datetime || "").slice(0, 10); }
+
+function matchesFilters(f) {
+  if (F.session && !(f.uploaded && f.uploaded >= state.sessionStart)) return false;
+  if (F.text) {
+    const hay = [f.path, f.machine, f.maker, f.description, ...f.tags].join("\n").toLowerCase();
+    if (!F.text.toLowerCase().split(/\s+/).filter(Boolean).every(t => hay.includes(t))) return false;
+  }
+  if (F.tags.size) {
+    const have = new Set(f.tags.map(t => t.toLowerCase()));
+    for (const t of F.tags) if (!have.has(t.toLowerCase())) return false;
+  }
+  if (F.from || F.to) {
+    const day = F.kind === "upload" ? uploadDay(f) : recordedDay(f);
+    if (!day || (F.from && day < F.from) || (F.to && day > F.to)) return false;
+  }
+  return true;
+}
+
+const visibleFiles = () => state.files.filter(matchesFilters);
+const filtersActive = () => !!(F.text || F.tags.size || F.session || F.from || F.to);
+
+function applyFilters() {
+  const shown = new Set(visibleFiles().map(f => f.path));
+  state.selected = new Set([...state.selected].filter(p => shown.has(p)));  // never act on files you cannot see
+  renderList();
+}
+
+function renderFilterTags() {
+  const box = document.getElementById("f-tags");
+  box.replaceChildren();
+  const names = new Set(state.tags.map(t => t.name));
+  F.tags.forEach(t => { if (!names.has(t)) F.tags.delete(t); });
+  state.tags.forEach(t => {
+    const b = el("button", t.name, "tag filter");
+    b.type = "button";
+    if (F.tags.has(t.name)) b.classList.add("on");
+    b.onclick = () => {
+      if (F.tags.has(t.name)) F.tags.delete(t.name); else F.tags.add(t.name);
+      b.classList.toggle("on");
+      applyFilters();
+    };
+    box.appendChild(b);
+  });
+}
+
+(function wireFilters() {
+  const $ = id => document.getElementById(id);
+  $("f-text").oninput = e => { F.text = e.target.value.trim(); applyFilters(); };
+  $("f-session").onchange = e => { F.session = e.target.checked; applyFilters(); };
+  $("f-from").onchange = e => { F.from = e.target.value; applyFilters(); };
+  $("f-to").onchange = e => { F.to = e.target.value; applyFilters(); };
+  document.querySelectorAll("input[name=f-datekind]").forEach(r => r.onchange = () => { F.kind = r.value; applyFilters(); });
+  $("f-clear").onclick = () => {
+    F.text = ""; F.tags.clear(); F.session = false; F.from = F.to = ""; F.kind = "upload";
+    $("f-text").value = ""; $("f-session").checked = false; $("f-from").value = ""; $("f-to").value = "";
+    document.querySelector("input[name=f-datekind][value=upload]").checked = true;
+    renderFilterTags();
+    applyFilters();
+  };
+})();
 
 // ---- file list -----------------------------------------------------------
 function renderList() {
   const tbody = document.querySelector("#files tbody");
   tbody.replaceChildren();
+  const shown = visibleFiles();
   document.getElementById("empty").hidden = state.files.length > 0;
-  state.files.forEach(f => {
+  document.getElementById("no-match").hidden = !(state.files.length && !shown.length);
+  document.getElementById("f-summary").textContent = filtersActive()
+    ? `Showing ${shown.length} of ${state.files.length} file(s)` : `${state.files.length} file(s)`;
+  shown.forEach(f => {
     const tr = el("tr");
     if (state.current && state.current.path === f.path) tr.className = "sel";
     const cb = el("input");
@@ -34,7 +110,9 @@ function renderList() {
 }
 
 async function loadFiles() {
-  state.files = (await api("/api/files")).files;
+  const res = await api("/api/files");
+  state.files = res.files;
+  state.sessionStart = res.session_start || "";
   const present = new Set(state.files.map(f => f.path));
   state.selected = new Set([...state.selected].filter(p => present.has(p)));
   if (state.current) state.current = state.files.find(f => f.path === state.current.path) || null;
@@ -155,12 +233,13 @@ function updateBulkBar() {
   document.getElementById("bulk-bar").hidden = n === 0;
   document.getElementById("bulk-count").textContent = `${n} file(s) selected`;
   const all = document.getElementById("select-all");
-  all.checked = n > 0 && n === state.files.length;
-  all.indeterminate = n > 0 && n < state.files.length;
+  const shown = visibleFiles();
+  all.checked = n > 0 && n === shown.length;
+  all.indeterminate = n > 0 && n < shown.length;
 }
 
 document.getElementById("select-all").onchange = e => {
-  state.selected = new Set(e.target.checked ? state.files.map(f => f.path) : []);
+  state.selected = new Set(e.target.checked ? visibleFiles().map(f => f.path) : []);
   renderList();
 };
 document.getElementById("bulk-clear").onclick = () => { state.selected.clear(); renderList(); };
@@ -265,6 +344,8 @@ async function loadMakers() {
 // ---- tag manager -----------------------------------------------------------
 async function loadTags() {
   state.tags = (await api("/api/tags")).tags;
+  renderFilterTags();
+  applyFilters();  // a renamed or deleted tag may have dropped out of the active filter
   const dl = document.getElementById("tag-options");
   dl.replaceChildren();
   state.tags.forEach(t => { const o = el("option"); o.value = t.name; dl.appendChild(o); });

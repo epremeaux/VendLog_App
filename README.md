@@ -76,6 +76,10 @@ Push before closing VendLog so your colleague gets your work.
   Files are stored in `logs\<machine>\`. Existing files are never overwritten.
 - **Machine** names also select the folder. Near-duplicates (e.g. `Coke Red` vs `coke_red`) are flagged.
 - **Machine maker**: Fuji Denki, Sanden, Panasonic, JVMA, UNKNOWN, or type a new one.
+- **Filter** the list with the block at the top: free text, tag buttons (a file must have all selected tags),
+  **This session** (only files uploaded since VendLog was started), and a date range that applies to either the
+  upload date or the log's recorded date. The list scrolls on its own with a fixed header. Select-all and bulk
+  actions only affect the files you can see. Files uploaded before upload times were recorded use their file date.
 - Select a file to edit its tags, machine, maker, date and description. Changing the
   machine moves the file. Tick several files to bulk tag or bulk move them.
 - **Tags** are a shared vocabulary with autocomplete. Rename or delete a tag globally from the tag manager.
@@ -124,9 +128,12 @@ Each log `name.log` has a sidecar `name.log.meta.json` next to it:
   "machine": "Coke Red Lab",
   "maker": "Fuji Denki",
   "datetime": "2026-03-14T09:30",
-  "description": "Door switch test"
+  "description": "Door switch test",
+  "uploaded": "2026-03-14T01:02:03+00:00"
 }
 ```
+
+`uploaded` is set automatically when a file is uploaded (UTC) and drives the Manage page's upload-date filter and "This session" filter.
 
 `tags.json` holds the tag vocabulary and `vendlog.json` the version stamp. All are plain,
 sorted JSON that diff and merge cleanly. An example is in [`docs\example`](docs/example).

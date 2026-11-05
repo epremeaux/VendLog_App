@@ -216,7 +216,7 @@ def create_app(cfg: dict | None = None) -> Flask:
 
     @app.get("/api/files")
     def files():
-        return jsonify(files=store.list_logs())
+        return jsonify(files=store.list_logs(), session_start=store.session_start)
 
     @app.post("/api/files")
     def upload():

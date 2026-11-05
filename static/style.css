@@ -81,3 +81,8 @@ button.filter.on { background: #2a6; color: #fff; border-color: #185; }
 .image-scroll img { display: inline-block; }
 .image-scroll img.fit { max-width: 100%; max-height: calc(100vh - 210px); width: auto; height: auto; object-fit: contain; }
 #pv-meta-box > summary { cursor: pointer; font-weight: 600; margin-bottom: 4px; }
+
+#files-scroll { max-height: calc(100vh - 140px); min-height: 160px; overflow: auto; border: 1px solid #ddd; }
+#files-scroll thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; box-shadow: 0 1px 0 #cbd5e1; }
+#filter-box .row.opts { flex-wrap: wrap; }
+#filter-box .row input[type=date] { flex: 0 0 auto; }

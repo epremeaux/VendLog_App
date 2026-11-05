@@ -171,7 +171,7 @@ def test_update_meta(client, repo):
     assert r.json["tags"] == ["Coin inserted", "Door open", "jvma"]
     assert r.json["machine"] == "M2" and r.json["path"] == "M2/b.log"
     saved = json.loads((repo / "logs" / "M2" / "b.log.meta.json").read_text())
-    assert list(saved) == ["tags", "machine", "maker", "datetime", "description"]
+    assert list(saved) == ["tags", "machine", "maker", "datetime", "description", "uploaded"]
     assert client.put("/api/files/a.log", json={"tags": "x"}, headers=H).status_code == 400
     assert client.put("/api/files/a.log", json={"tags": [""]}, headers=H).status_code == 400
 
@@ -191,3 +191,23 @@ def test_tag_rename_delete(client, repo):
     assert client.get("/api/files/a.log").json["tags"] == []
     assert [t["name"] for t in r.json["tags"]] == ["Unused"]
     assert client.post("/api/tags/delete", json={"name": "nope"}, headers=H).status_code == 404
+
+
+def test_upload_records_time_and_session(tmp_path):
+    import io
+    import sys
+    from pathlib import Path as P
+    sys.path.insert(0, str(P(__file__).resolve().parent.parent))
+    from app import create_app
+    (tmp_path / "logs").mkdir()
+    c = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+    H = {"X-VendLog": "1"}
+    r = c.post("/api/files", data={"files": (io.BytesIO(b"x\n"), "a.log")}, headers=H)
+    up = r.get_json()["saved"][0]["uploaded"]
+    assert up.endswith("+00:00")
+    listing = c.get("/api/files").get_json()
+    assert listing["files"][0]["uploaded"] == up and listing["session_start"] <= up
+    # editing cannot change it, and edits keep it
+    c.put("/api/files/a.log", json={"uploaded": "2000-01-01T00:00:00+00:00", "tags": ["T"]}, headers=H)
+    got = c.get("/api/files/a.log").get_json()
+    assert got["uploaded"] == up and got["tags"] == ["T"]
