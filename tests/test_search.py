@@ -273,3 +273,21 @@ def test_search_session_and_date_filters(tmp_path):
     assert names("datekind=recorded&to=2025-12-31") == ["old.log"]
     assert names("datekind=upload&from=2026-01-09&to=2026-01-11") == ["old.log"]
     assert names("q=old&mode=or&session=1") == []  # session narrows even in OR mode
+
+
+def test_search_folder_filter(tmp_path):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from app import create_app
+    logs = tmp_path / "logs"
+    (logs / "Coke Red").mkdir(parents=True)
+    (logs / "Pepsi").mkdir()
+    for rel in ("root.log", "Coke Red/a.log", "Pepsi/b.log"):
+        (logs / rel).write_text("x\n")
+    c = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+    names = lambda qs: sorted(f["path"] for f in c.get("/api/search?" + qs).get_json()["files"])
+    assert names("folder=coke red") == ["Coke Red/a.log"]
+    assert names("folder=.") == ["root.log"]
+    assert names("folder=Pepsi&q=b") == ["Pepsi/b.log"]
+    assert names("folder=Pepsi&q=a") == []
+    assert len(names("")) == 3

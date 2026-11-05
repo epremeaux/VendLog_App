@@ -17,6 +17,7 @@ async function runSearch() {
   params.set("mode", currentMode());
   if ($("content").checked) params.set("content", "1");
   if ($("f-session").checked) params.set("session", "1");
+  if ($("f-folder").value) params.set("folder", $("f-folder").value);
   if ($("f-from").value || $("f-to").value) {
     params.set("datekind", document.querySelector("input[name=f-datekind]:checked").value);
     params.set("from", $("f-from").value);
@@ -113,6 +114,21 @@ async function loadOptions() {
     });
   });
   fill("machine-options", [...seen.values()].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())));
+
+  // Folder pulldown: top-level folders under logs/, plus files that sit directly in logs/.
+  const folders = new Map();
+  let hasRoot = false;
+  files.files.forEach(f => {
+    if (f.path.includes("/")) { const n = f.path.split("/")[0]; if (!folders.has(n.toLowerCase())) folders.set(n.toLowerCase(), n); }
+    else hasRoot = true;
+  });
+  const sel = $("f-folder"), keep = sel.value;
+  sel.replaceChildren();
+  const add = (value, label) => { const o = el("option", label); o.value = value; sel.appendChild(o); };
+  add("", "All folders");
+  if (hasRoot) add(".", "(logs root)");
+  [...folders.values()].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).forEach(n => add(n, n));
+  sel.value = [...sel.options].some(o => o.value === keep) ? keep : "";
 }
 
 function showMeta(f) {
@@ -243,12 +259,12 @@ async function gotoLine(line) {
 $("search-form").onsubmit = e => { e.preventDefault(); runSearch().catch(fail); };
 document.querySelectorAll("input[name=mode]").forEach(r => r.onchange = () => runSearch().catch(fail));
 $("content").onchange = () => runSearch().catch(fail);
-["f-session", "f-from", "f-to"].forEach(id => $(id).onchange = () => runSearch().catch(fail));
+["f-folder", "f-session", "f-from", "f-to"].forEach(id => $(id).onchange = () => runSearch().catch(fail));
 document.querySelectorAll("input[name=f-datekind]").forEach(r => r.onchange = () => {
   if ($("f-from").value || $("f-to").value) runSearch().catch(fail);
 });
 $("f-clear").onclick = () => {
-  $("f-session").checked = false; $("f-from").value = ""; $("f-to").value = "";
+  $("f-session").checked = false; $("f-from").value = ""; $("f-to").value = ""; $("f-folder").value = "";
   document.querySelector("input[name=f-datekind][value=upload]").checked = true;
   S.tags.clear();
   loadTagFilters().then(runSearch).catch(fail);

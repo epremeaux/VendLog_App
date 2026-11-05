@@ -31,7 +31,7 @@ def _day(f: dict, kind: str) -> str:
 
 def search(store: Store, q: str = "", tags: list[str] | None = None, mode: str = "and",
            content: bool = False, session: bool = False, date_kind: str = "upload",
-           date_from: str = "", date_to: str = "") -> dict:
+           date_from: str = "", date_to: str = "", folder: str = "") -> dict:
     """Each comma-separated term and each selected tag is one condition.
 
     mode "and": a file must satisfy every condition; "or": at least one.
@@ -47,6 +47,10 @@ def search(store: Store, q: str = "", tags: list[str] | None = None, mode: str =
 
     results, truncated = [], False
     for f in store.list_logs():
+        if folder:  # "." means files directly in the logs folder
+            top = f["path"].split("/")[0] if "/" in f["path"] else "."
+            if top.lower() != folder.lower():
+                continue
         if session and not (f.get("uploaded") and f["uploaded"] >= store.session_start):
             continue
         if date_from or date_to:

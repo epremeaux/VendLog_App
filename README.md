@@ -89,6 +89,8 @@ Push before closing VendLog so your colleague gets your work.
 - Type words to match filenames, tags, machine, maker, description and (optionally) file contents.
 - Search is case-insensitive. Use **All** (AND) or **Any** (OR); comma-separated terms such as
   `Keyboard entry, JVMA` match files having both.
+- Narrow results with the **Folder** pulldown (the machine folders; "(logs root)" are files not yet assigned to a machine), **This session**, and a date range
+  that applies to either the upload date or the log's recorded date.
 - Click a result to preview it. Text files are paged so large files are not loaded whole.
   Images (png, jpg, gif, webp, bmp, svg) are shown directly, with Fit to window, Actual size and open-in-new-tab.
   Use the find box with prev/next, or go to a line. Text encodings utf-8, utf-16 and cp1252 are detected.
