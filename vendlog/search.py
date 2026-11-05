@@ -1,6 +1,8 @@
 """Search over log metadata (filename, tags, machine, description) and optionally file contents."""
 from __future__ import annotations
 
+from datetime import datetime
+
 from . import preview
 from .store import Store
 
@@ -17,21 +19,40 @@ def parse_terms(q: str) -> list[str]:
     return out
 
 
+def _day(f: dict, kind: str) -> str:
+    """The file's upload day (local time; falls back to the file's modified time) or recorded day."""
+    if kind == "recorded":
+        return (f.get("datetime") or "")[:10]
+    try:
+        return datetime.fromisoformat(f.get("uploaded") or f["modified"]).astimezone().strftime("%Y-%m-%d")
+    except (ValueError, KeyError):
+        return ""
+
+
 def search(store: Store, q: str = "", tags: list[str] | None = None, mode: str = "and",
-           content: bool = False) -> dict:
+           content: bool = False, session: bool = False, date_kind: str = "upload",
+           date_from: str = "", date_to: str = "") -> dict:
     """Each comma-separated term and each selected tag is one condition.
 
     mode "and": a file must satisfy every condition; "or": at least one.
     A term is satisfied by the filename/path, a tag, the machine or description (substring,
     case-insensitive), or - when `content` is on - by the file text. Selected tags match exactly.
+    `session` and the date range always narrow the result, whatever the mode.
     """
     terms = parse_terms(q)
     want_tags = [t.lower() for t in (tags or []) if t and t.strip()]
     mode = "or" if mode == "or" else "and"
     combine = any if mode == "or" else all
+    date_kind = "recorded" if date_kind == "recorded" else "upload"
 
     results, truncated = [], False
     for f in store.list_logs():
+        if session and not (f.get("uploaded") and f["uploaded"] >= store.session_start):
+            continue
+        if date_from or date_to:
+            day = _day(f, date_kind)
+            if not day or (date_from and day < date_from) or (date_to and day > date_to):
+                continue
         file_tags = {t.lower() for t in f["tags"] if isinstance(t, str)}
         tag_ok = [t in file_tags for t in want_tags]
         if mode == "and" and not all(tag_ok):

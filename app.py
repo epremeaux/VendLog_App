@@ -141,7 +141,9 @@ def create_app(cfg: dict | None = None) -> Flask:
     def api_search():
         return jsonify(search_mod.search(
             store, request.args.get("q", ""), request.args.getlist("tag"),
-            request.args.get("mode", "and"), request.args.get("content") == "1"))
+            request.args.get("mode", "and"), request.args.get("content") == "1",
+            request.args.get("session") == "1", request.args.get("datekind", "upload"),
+            request.args.get("from", ""), request.args.get("to", "")))
 
     def _preview_path():
         rel = request.args.get("path", "")

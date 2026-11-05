@@ -14,6 +14,14 @@
         <label><input type="checkbox" id="content"> Search file contents</label>
       </div>
       <div class="field"><span>Filter by tag (exact)</span><div id="tag-filters" class="chips"></div></div>
+      <div class="row opts">
+        <label><input type="checkbox" id="f-session"> This session</label>
+        <label><input type="radio" name="f-datekind" value="upload" checked> Upload date</label>
+        <label><input type="radio" name="f-datekind" value="recorded"> Log recorded date</label>
+        <label>From <input type="date" id="f-from"></label>
+        <label>To <input type="date" id="f-to"></label>
+        <button type="button" id="f-clear">Clear</button>
+      </div>
     </form>
     <p id="summary" class="muted"></p>
     <div id="results"></div>

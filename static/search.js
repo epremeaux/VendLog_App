@@ -16,6 +16,12 @@ async function runSearch() {
   params.set("q", $("q").value);
   params.set("mode", currentMode());
   if ($("content").checked) params.set("content", "1");
+  if ($("f-session").checked) params.set("session", "1");
+  if ($("f-from").value || $("f-to").value) {
+    params.set("datekind", document.querySelector("input[name=f-datekind]:checked").value);
+    params.set("from", $("f-from").value);
+    params.set("to", $("f-to").value);
+  }
   S.tags.forEach(t => params.append("tag", t));
   $("summary").textContent = "Searching\u2026";
   const res = await api("/api/search?" + params);
@@ -237,6 +243,16 @@ async function gotoLine(line) {
 $("search-form").onsubmit = e => { e.preventDefault(); runSearch().catch(fail); };
 document.querySelectorAll("input[name=mode]").forEach(r => r.onchange = () => runSearch().catch(fail));
 $("content").onchange = () => runSearch().catch(fail);
+["f-session", "f-from", "f-to"].forEach(id => $(id).onchange = () => runSearch().catch(fail));
+document.querySelectorAll("input[name=f-datekind]").forEach(r => r.onchange = () => {
+  if ($("f-from").value || $("f-to").value) runSearch().catch(fail);
+});
+$("f-clear").onclick = () => {
+  $("f-session").checked = false; $("f-from").value = ""; $("f-to").value = "";
+  document.querySelector("input[name=f-datekind][value=upload]").checked = true;
+  S.tags.clear();
+  loadTagFilters().then(runSearch).catch(fail);
+};
 
 $("pv-external").onclick = async () => {
   if (!P.path) return;

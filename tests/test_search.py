@@ -251,3 +251,25 @@ def test_browse_program_endpoint(tmp_path, monkeypatch):
     H = {"X-VendLog": "1"}
     assert c.post("/api/browse-program", headers=H).get_json() == {"path": "C:\\x\\notepad++.exe"}
     assert c.post("/api/browse-program").status_code == 403
+
+
+def test_search_session_and_date_filters(tmp_path):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from app import create_app
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    def mk(name, **meta):
+        (logs / name).write_text("x\n")
+        (logs / (name + ".meta.json")).write_text(json.dumps(meta))
+    mk("old.log", uploaded="2026-01-10T12:00:00+00:00", datetime="2025-12-25T08:00")
+    mk("new.log", uploaded="2999-01-01T12:00:00+00:00", datetime="2026-03-14T09:30")
+    mk("norec.log", uploaded="2999-01-02T12:00:00+00:00")
+    c = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+    names = lambda qs: sorted(f["name"] for f in c.get("/api/search?" + qs).get_json()["files"])
+    assert names("") == ["new.log", "norec.log", "old.log"]
+    assert names("session=1") == ["new.log", "norec.log"]
+    assert names("datekind=recorded&from=2026-01-01") == ["new.log"]
+    assert names("datekind=recorded&to=2025-12-31") == ["old.log"]
+    assert names("datekind=upload&from=2026-01-09&to=2026-01-11") == ["old.log"]
+    assert names("q=old&mode=or&session=1") == []  # session narrows even in OR mode
