@@ -239,3 +239,15 @@ def test_external_editor_settings_and_open(tmp_path, monkeypatch):
     assert calls == [[str(editor), str(logs / "a.log")]]
     assert c.post("/api/open-external", json={"path": "../x"}, headers=H).status_code in (400, 404)
     assert c.post("/api/open-external", json={"path": "a.log"}).status_code == 403  # needs header
+
+
+def test_browse_program_endpoint(tmp_path, monkeypatch):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import app as app_module
+    (tmp_path / "logs").mkdir()
+    c = app_module.create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+    monkeypatch.setattr(app_module.dialog, "pick_program", lambda: "C:\\x\\notepad++.exe")
+    H = {"X-VendLog": "1"}
+    assert c.post("/api/browse-program", headers=H).get_json() == {"path": "C:\\x\\notepad++.exe"}
+    assert c.post("/api/browse-program").status_code == 403

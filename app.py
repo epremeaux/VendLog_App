@@ -9,7 +9,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request, send_file
 
-from vendlog import config, preview, version
+from vendlog import config, dialog, preview, version
 from vendlog import search as search_mod
 from vendlog.gitops import AppRepo, Git
 from vendlog.store import IMAGE_TYPES, Store, StoreError, norm_tags
@@ -166,6 +166,10 @@ def create_app(cfg: dict | None = None) -> Flask:
         config.save_key("external_editor", path, Path(cfg.get("config_file") or config.CONFIG_FILE))
         cfg["external_editor"] = path
         return jsonify(external_editor=path)
+
+    @app.post("/api/browse-program")
+    def browse_program():
+        return jsonify(path=dialog.pick_program())
 
     @app.post("/api/open-external")
     def open_external():
