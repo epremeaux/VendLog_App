@@ -107,7 +107,8 @@ def window(path: Path, offset: int, limit: int) -> dict:
                     if offset == 0 and i == 0:
                         text = text.lstrip("\ufeff")
                     lines.append(_clean(text))
-    return {"encoding": enc, "total": total, "offset": offset, "lines": lines}
+    return {"encoding": enc, "total": total, "offset": offset, "lines": lines, 
+            "truncated": len(lines) >= 500 and offset + len(lines) < total}
 
 
 def find(path: Path, query: str, max_matches: int = 1000) -> dict:

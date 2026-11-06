@@ -84,7 +84,7 @@ def test_preview_window(tmp_path):
 def test_preview_edge_cases(tmp_path):
     empty = tmp_path / "e.log"
     empty.write_bytes(b"")
-    assert preview.window(empty, 0, 10) == {"encoding": "utf-8", "total": 0, "offset": 0, "lines": []}
+    assert preview.window(empty, 0, 10) == {"encoding": "utf-8", "total": 0, "offset": 0, "lines": [], "truncated": False}
     no_nl = tmp_path / "n.log"
     no_nl.write_bytes(b"a\nb")
     assert preview.window(no_nl, 0, 10)["lines"] == ["a", "b"]

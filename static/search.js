@@ -229,6 +229,21 @@ async function loadWindow(offset, markLine) {
   $("pv-pgnext").disabled = d.offset + d.lines.length >= d.total;
   const box = $("pv-lines");
   box.replaceChildren();
+  
+  if (d.truncated) {
+    const notice = el("div", undefined, "truncation-notice");
+    const p = el("p");
+    p.appendChild(document.createTextNode("This file has more than 500 lines. To view all content, "));
+    const btn = el("button", "open it in your external editor");
+    btn.type = "button";
+    btn.className = "link-button";
+    btn.onclick = () => $("pv-external").click();
+    p.appendChild(btn);
+    p.appendChild(document.createTextNode("."));
+    notice.appendChild(p);
+    box.appendChild(notice);
+  }
+  
   const cur = P.mi >= 0 ? P.matches[P.mi].line : markLine;
   let target = null;
   d.lines.forEach((text, i) => {
