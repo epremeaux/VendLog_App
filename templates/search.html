@@ -21,11 +21,16 @@
         <label><input type="checkbox" id="f-session"> This session</label>
         <button type="button" id="f-clear">Clear</button>
       </div>
-      <div class="row opts">
-        <label><input type="radio" name="f-datekind" value="upload" checked> Upload date</label>
-        <label><input type="radio" name="f-datekind" value="recorded"> Log recorded date</label>
-        <label>From <input type="date" id="f-from"></label>
-        <label>To <input type="date" id="f-to"></label>
+      <div class="date-box">
+        <div class="row opts">
+          <strong>Date</strong>
+          <label><input type="radio" name="f-datekind" value="upload" checked> Uploaded</label>
+          <label><input type="radio" name="f-datekind" value="recorded"> Recorded</label>
+        </div>
+        <div class="row opts">
+          <label>From <input type="date" id="f-from"></label>
+          <label>To <input type="date" id="f-to"></label>
+        </div>
       </div>
     </form>
     <p id="summary" class="muted"></p>

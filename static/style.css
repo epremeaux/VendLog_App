@@ -88,6 +88,9 @@ button.filter.on { background: #2a6; color: #fff; border-color: #185; }
 #filter-box .row.opts { flex-wrap: wrap; }
 #filter-box .row input[type=date] { flex: 0 0 auto; }
 #search-form .row.opts { flex-wrap: wrap; }
+#search-form .row.opts label { white-space: nowrap; }
+.date-box { border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 8px; margin: 6px 0; background: #f8fafc; }
+.date-box .row { margin: 4px 0; gap: 12px; }
 #search-form .row input[type=date], #search-form .row input[type=radio], #search-form .row input[type=checkbox] { flex: 0 0 auto; }
 
 details.section { border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; margin: 0 0 8px; }
