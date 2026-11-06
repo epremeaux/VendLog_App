@@ -1,10 +1,9 @@
 "use strict";
 
 const state = { files: [], current: null, tags: [], selected: new Set(), sessionStart: "" };
-const F = { text: "", tags: new Set(), session: false, kind: "upload", from: "", to: "" };
+const F = { text: "", tags: new Set(), session: false, kind: "upload", ...defaultRange() };
 
 // ---- filtering -------------------------------------------------------------
-const localDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 // Upload time is stored once at upload; files added before that existed fall back to the file's modified time.
 function uploadDay(f) {
@@ -60,6 +59,7 @@ function renderFilterTags() {
 
 (function wireFilters() {
   const $ = id => document.getElementById(id);
+  $("f-from").value = F.from; $("f-to").value = F.to;
   $("f-text").oninput = e => { F.text = e.target.value.trim(); applyFilters(); };
   $("f-session").onchange = e => { F.session = e.target.checked; applyFilters(); };
   $("f-from").onchange = e => { F.from = e.target.value; applyFilters(); };
@@ -81,8 +81,7 @@ function renderList() {
   const shown = visibleFiles();
   document.getElementById("empty").hidden = state.files.length > 0;
   document.getElementById("no-match").hidden = !(state.files.length && !shown.length);
-  document.getElementById("f-summary").textContent = filtersActive()
-    ? `Showing ${shown.length} of ${state.files.length} file(s)` : `${state.files.length} file(s)`;
+  document.getElementById("f-summary").textContent = `Showing ${shown.length} out of ${state.files.length} files`;
   shown.forEach(f => {
     const tr = el("tr");
     if (state.current && state.current.path === f.path) tr.className = "sel";

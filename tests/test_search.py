@@ -310,3 +310,16 @@ def test_pdf_preview(tmp_path):
     assert c.get("/api/preview?path=doc.PDF").status_code == 400
     found = c.get("/api/search?q=hello&content=1").get_json()["files"]
     assert [f["path"] for f in found] == ["n.txt"]
+
+
+def test_search_reports_total(tmp_path):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from app import create_app
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    for n in ("a.log", "b.log", "c.log"):
+        (logs / n).write_text("x\n")
+    c = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+    r = c.get("/api/search?q=a").get_json()
+    assert len(r["files"]) == 1 and r["total"] == 3

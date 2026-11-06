@@ -46,7 +46,8 @@ def search(store: Store, q: str = "", tags: list[str] | None = None, mode: str =
     date_kind = "recorded" if date_kind == "recorded" else "upload"
 
     results, truncated = [], False
-    for f in store.list_logs():
+    logs = store.list_logs()
+    for f in logs:
         if folder:  # "." means files directly in the logs folder
             top = f["path"].split("/")[0] if "/" in f["path"] else "."
             if top.lower() != folder.lower():
@@ -79,4 +80,4 @@ def search(store: Store, q: str = "", tags: list[str] | None = None, mode: str =
             truncated = True
             break
         results.append({**f, "hits": hits})
-    return {"files": results, "truncated": truncated, "terms": terms}
+    return {"files": results, "truncated": truncated, "terms": terms, "total": len(logs)}

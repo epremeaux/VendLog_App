@@ -14,6 +14,17 @@ function button(label, onclick, cls) {
   return b;
 }
 
+function localDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Default date range for the file lists: the last 30 days, ending today.
+function defaultRange() {
+  const to = new Date(), from = new Date();
+  from.setDate(from.getDate() - 30);
+  return { from: localDate(from), to: localDate(to) };
+}
+
 function fmtSize(n) {
   if (n < 1024) return n + " B";
   if (n < 1048576) return (n / 1024).toFixed(1) + " KB";

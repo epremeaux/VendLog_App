@@ -33,7 +33,8 @@ async function runSearch() {
 function renderResults(res) {
   const box = $("results");
   box.replaceChildren();
-  $("summary").textContent = `${res.files.length} file(s)` + (res.truncated ? " (showing the first results only; narrow your search)" : "");
+  $("summary").textContent = `Showing ${res.files.length} out of ${res.total} files`
+    + (res.truncated ? " (showing the first results only; narrow your search)" : "");
   res.files.forEach(f => {
     const card = el("div", undefined, "result");
     if (P.path === f.path) card.classList.add("sel");
@@ -335,6 +336,8 @@ $("pv-goto-btn").onclick = () => { const n = parseInt($("pv-goto").value, 10); i
 $("pv-goto").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("pv-goto-btn").click(); } };
 
 (async () => {
+  const range = defaultRange();
+  $("f-from").value = range.from; $("f-to").value = range.to;
   await loadTagFilters();
   await loadOptions();
   await runSearch();
