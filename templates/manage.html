@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Manage logs - VendLog{% endblock %}
 {% block body %}
 <main>
@@ -46,8 +46,8 @@
       </div>
       <div class="field"><span>Filter by tag (files must have all selected)</span><div id="f-tags" class="chips"></div></div>
       <div class="row opts">
-        <label><input type="radio" name="f-datekind" value="upload" checked> Upload date</label>
-        <label><input type="radio" name="f-datekind" value="recorded"> Log recorded date</label>
+        <label><input type="radio" name="f-datekind" value="upload" checked> Uploaded</label>
+        <label><input type="radio" name="f-datekind" value="recorded"> Recorded</label>
         <label>From <input type="date" id="f-from"></label>
         <label>To <input type="date" id="f-to"></label>
       </div>
