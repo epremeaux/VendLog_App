@@ -193,6 +193,10 @@ function renderDetail() {
   const when = el("input"); when.value = f.datetime || ""; when.placeholder = "2026-03-01T14:22:00+09:00";
   const desc = el("textarea"); desc.rows = 3; desc.value = f.description || "";
   pane.append(machineField, field("Machine maker", maker), field("Date/time", when), field("Description", desc));
+  const autosize = () => { desc.style.height = "auto"; desc.style.height = desc.scrollHeight + 2 + "px"; };
+  desc.style.overflow = "hidden"; desc.style.resize = "vertical";
+  desc.addEventListener("input", autosize);
+  autosize();
 
   const picker = tagPicker(f.tags);
   pane.append(el("h3", "Tags"), picker.node);
