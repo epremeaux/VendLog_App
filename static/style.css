@@ -18,6 +18,7 @@ dd { margin: 0; }
 .field { display: block; margin: 6px 0; }
 .field span { display: block; font-weight: 600; font-size: 12px; }
 .field input, .field textarea { width: 100%; box-sizing: border-box; }
+#pv-desc { resize: vertical; overflow: hidden; }
 .row input { flex: 1; min-width: 0; }
 .chips { min-height: 24px; }
 .tag .x { border: 0; background: none; cursor: pointer; padding: 0 2px; color: #345; }

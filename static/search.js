@@ -131,11 +131,20 @@ async function loadOptions() {
   sel.value = [...sel.options].some(o => o.value === keep) ? keep : "";
 }
 
+function autosizeDesc() {
+  const t = $("pv-desc");
+  t.style.height = "auto";
+  if (t.scrollHeight) t.style.height = t.scrollHeight + 2 + "px";
+}
+$("pv-desc").addEventListener("input", autosizeDesc);
+$("pv-meta-box").addEventListener("toggle", autosizeDesc);
+
 function showMeta(f) {
   $("pv-machine").value = f.machine || "";
   $("pv-maker").value = f.maker || "";
   $("pv-dt").value = f.datetime || "";
   $("pv-desc").value = f.description || "";
+  autosizeDesc();
   pvPicker = tagPicker(f.tags || []);
   $("pv-tags").replaceChildren(pvPicker.node);
   $("pv-save-msg").textContent = "";
