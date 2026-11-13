@@ -14,7 +14,7 @@ if [ ! -x .venv/bin/python ]; then
   python3 -m venv .venv || { echo "Could not create the virtual environment."; read -r -p "Press Return to close..." _; exit 1; }
 fi
 
-if ! .venv/bin/python -c "import flask" >/dev/null 2>&1; then
+if ! .venv/bin/python -c "import flask, mistune" >/dev/null 2>&1; then
   echo "Installing required packages..."
   .venv/bin/python -m pip install -r requirements.txt || { echo "Package install failed."; read -r -p "Press Return to close..." _; exit 1; }
 fi

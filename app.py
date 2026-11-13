@@ -2,19 +2,24 @@
 from __future__ import annotations
 
 import json
+import queue
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, send_file
+import mistune
+from flask import Flask, Response, jsonify, render_template, request, send_file
+from markupsafe import Markup
 
 from vendlog import config, dialog, preview, version
 from vendlog import search as search_mod
 from vendlog.gitops import AppRepo, Git
-from vendlog.store import IMAGE_TYPES, Store, StoreError, norm_tags
+from vendlog.store import IMAGE_TYPES, VIDEO_TYPES, Store, StoreError, norm_tags
 
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+MAX_MARKDOWN_BYTES = 5 * 1024 * 1024
 
 
 def _log_auto(res: dict, auto_pull: bool) -> None:
@@ -137,6 +142,51 @@ def create_app(cfg: dict | None = None) -> Flask:
         d = request.get_json(silent=True) or {}
         return jsonify(git.connect(d.get("url", ""), d.get("token", ""), d.get("confirm", "")))
 
+    @app.post("/api/sync/run")
+    def sync_run():
+        d = request.get_json(silent=True) or {}
+        if not isinstance(d, dict) or not isinstance(d.get("action"), str):
+            raise StoreError("Invalid synchronisation action")
+        operations = {
+            "app-check": (app_repo, lambda: app_repo.check()),
+            "app-update": (app_repo, lambda: app_repo.update()),
+            "fetch": (git, lambda: git.fetch()),
+            "pull": (git, lambda: git.pull()),
+            "push": (git, lambda: git.push(d.get("message", ""))),
+            "prepare": (git, lambda: git.prepare_connect(d.get("url", ""), len(store.list_logs()))),
+            "connect": (git, lambda: git.connect(d.get("url", ""), d.get("token", ""), d.get("confirm", ""))),
+        }
+        operation = operations.get(d["action"])
+        if not operation:
+            raise StoreError("Unknown synchronisation action")
+        git_instance, execute = operation
+        events = queue.Queue()
+
+        def worker():
+            try:
+                with git_instance.report_progress(lambda progress: events.put({"progress": progress})):
+                    result = execute()
+                events.put({"result": result})
+            except StoreError as e:
+                events.put({"error": str(e)})
+            except Exception:
+                app.logger.exception("Synchronisation operation failed")
+                events.put({"error": "Synchronisation failed. See the server output for details."})
+
+        def stream():
+            threading.Thread(target=worker, daemon=True).start()
+            while True:
+                try:
+                    event = events.get(timeout=10)
+                except queue.Empty:
+                    event = {"waiting": True}
+                yield json.dumps(event) + "\n"
+                if "result" in event or "error" in event:
+                    break
+
+        return Response(stream(), mimetype="application/x-ndjson",
+                        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
     @app.get("/api/search")
     def api_search():
         return jsonify(search_mod.search(
@@ -211,6 +261,35 @@ def create_app(cfg: dict | None = None) -> Flask:
         resp.headers["X-Content-Type-Options"] = "nosniff"
         return resp
 
+    @app.get("/api/video")
+    def api_video():
+        p = _preview_path()
+        mime = VIDEO_TYPES.get(p.suffix.lower())
+        if not mime:
+            raise StoreError("Not a supported video file")
+        resp = send_file(p, mimetype=mime, conditional=True, max_age=0)
+        resp.headers["X-Content-Type-Options"] = "nosniff"
+        return resp
+
+    @app.get("/api/markdown")
+    def api_markdown():
+        p = _preview_path()
+        if p.suffix.lower() != ".md":
+            raise StoreError("Not a Markdown file")
+        if p.stat().st_size > MAX_MARKDOWN_BYTES:
+            body = render_template("markdown.html", error="This Markdown file is too large to render. Use Source view.")
+            status = 413
+        else:
+            enc = preview.detect_encoding(p)
+            text = p.read_text(encoding="utf-8-sig" if enc == "utf-8" else enc, errors="replace")
+            render_markdown = mistune.create_markdown(escape=True, plugins=["table", "strikethrough"])
+            body = render_template("markdown.html", content=Markup(render_markdown(text)))
+            status = 200
+        response = app.make_response((body, status))
+        response.headers["Content-Security-Policy"] = "sandbox; default-src 'none'; style-src 'unsafe-inline'"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
     @app.get("/api/preview")
     def api_preview():
         p = _preview_path()
@@ -218,6 +297,8 @@ def create_app(cfg: dict | None = None) -> Flask:
             raise StoreError("This is an image; use /api/image")
         if p.suffix.lower() == ".pdf":
             raise StoreError("This is a PDF; use /api/pdf")
+        if p.suffix.lower() in VIDEO_TYPES:
+            raise StoreError("This is a video; use /api/video")
         try:
             offset, limit = int(request.args.get("offset", 0)), int(request.args.get("limit", 500))
         except ValueError:

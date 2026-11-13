@@ -1,5 +1,7 @@
+import json
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -86,6 +88,57 @@ def test_pull_push_and_conflict_protection(tmp_path):
     # The refused push committed nothing, so pull fast-forwards and keeps my uncommitted file.
     assert "Pulled 2" in g.pull()["message"]
     assert (mine / "e.log").exists() and (mine / "d.log").exists()
+
+
+def test_streamed_push_reports_real_git_progress(tmp_path):
+    bare = seed(tmp_path, "progress", {"a.log": "one\n"})
+    mine = clone(tmp_path, bare, "mine")
+    for i in range(20):
+        (mine / f"log{i}.txt").write_text(f"log contents {i}\n")
+    client = create_app({"repo_path": str(tmp_path), "logs_dir": "mine",
+                         "allow_local_remotes": True}).test_client()
+
+    response = client.post("/api/sync/run", headers=H, json={"action": "push", "message": "add logs"})
+    assert response.status_code == 200
+    events = [json.loads(line) for line in response.data.splitlines()]
+    progress = [event["progress"] for event in events if "progress" in event]
+    assert any("Writing objects" in p["phase"] and 0 < p["current"] <= p["total"] for p in progress)
+    assert "pushed" in events[-1]["result"]["message"]
+    assert client.post("/api/sync/run", json={"action": "push"}).status_code == 403
+    assert client.post("/api/sync/run", headers=H, json={"action": "unknown"}).status_code == 400
+
+
+def test_streamed_operation_reports_failure(tmp_path):
+    (tmp_path / "logs").mkdir()
+    client = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+    response = client.post("/api/sync/run", headers=H, json={"action": "pull"})
+    events = [json.loads(line) for line in response.data.splitlines()]
+    assert "No repository" in events[-1]["error"]
+
+
+def test_progress_is_streamed_before_operation_finishes(tmp_path, monkeypatch):
+    (tmp_path / "logs").mkdir()
+    app = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"})
+    git_instance = app.extensions["git"]
+    release = threading.Event()
+
+    def fetch():
+        git_instance._progress.callback({"phase": "Receiving objects", "current": 1, "total": 3})
+        if not release.wait(5):
+            raise RuntimeError("Progress was not consumed while the operation was running")
+        return {"connected": True}
+
+    monkeypatch.setattr(git_instance, "fetch", fetch)
+    response = app.test_client().post("/api/sync/run", headers=H, json={"action": "fetch"}, buffered=False)
+    try:
+        chunks = iter(response.response)
+        first = json.loads(next(chunks))
+        assert first["progress"] == {"phase": "Receiving objects", "current": 1, "total": 3}
+        release.set()
+        assert json.loads(next(chunks))["result"]["connected"]
+    finally:
+        release.set()
+        response.close()
 
 
 def test_conflicting_pull_is_aborted_cleanly(tmp_path):

@@ -71,6 +71,57 @@ def test_content_search(client):
     assert paths(client, q="hello, coin inserted", content="1", mode="or") == ["Cheerio/run1.log", "plain.log"]
 
 
+def test_markdown_preview_and_content_search(tmp_path):
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "notes.MD").write_text(
+        "# Heading\n\n**bold** and needle\n\n<script>alert(1)</script>\n"
+        "[unsafe](javascript:alert(1))\n", encoding="utf-8")
+    (logs / "plain.txt").write_text("plain", encoding="utf-8")
+    c = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+
+    assert c.get("/api/files").json["files"][0]["kind"] == "markdown"
+    response = c.get("/api/markdown?path=notes.MD")
+    assert response.status_code == 200
+    assert b"<h1>Heading</h1>" in response.data
+    assert b"<strong>bold</strong>" in response.data
+    assert b"<script>" not in response.data
+    assert b'href="javascript:' not in response.data
+    assert "sandbox" in response.headers["Content-Security-Policy"]
+    assert paths(c, q="needle", content="1") == ["notes.MD"]
+    assert c.get("/api/preview?path=notes.MD").json["lines"][0] == "# Heading"
+    assert c.get("/api/markdown?path=plain.txt").status_code == 400
+
+
+def test_video_preview_and_range(tmp_path):
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "movie.MP4").write_bytes(b"0123456789 needle")
+    (logs / "note.txt").write_text("needle", encoding="utf-8")
+    c = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+
+    kinds = {f["name"]: f["kind"] for f in c.get("/api/files").json["files"]}
+    assert kinds["movie.MP4"] == "video"
+    response = c.get("/api/video?path=movie.MP4", headers={"Range": "bytes=2-5"})
+    assert response.status_code == 206 and response.data == b"2345"
+    assert response.mimetype == "video/mp4"
+    assert paths(c, q="needle", content="1") == ["note.txt"]
+    assert c.get("/api/preview?path=movie.MP4").status_code == 400
+    assert c.get("/api/video?path=note.txt").status_code == 400
+    assert c.get("/api/video?path=../app.py").status_code in (400, 404)
+
+
+def test_large_markdown_offers_source_view(tmp_path):
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "large.md").write_bytes(b"x" * (5 * 1024 * 1024 + 1))
+    c = create_app({"repo_path": str(tmp_path), "logs_dir": "logs"}).test_client()
+    response = c.get("/api/markdown?path=large.md")
+    assert response.status_code == 413
+    assert b"Use Source view" in response.data
+    assert c.get("/api/preview?path=large.md").status_code == 200
+
+
 def test_preview_window(tmp_path):
     p = tmp_path / "big.log"
     p.write_bytes(b"".join(b"line %d\r\n" % i for i in range(1, 2503)))

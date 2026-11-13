@@ -27,7 +27,7 @@ never handles passwords or tokens; see [Signing in](#signing-in-to-github).
 
 - Windows or macOS, Python 3.9+ and Git (with Git Credential Manager, included in Git for Windows and the
   Git installer for macOS from git-scm.com; Xcode's Git works too, with the macOS keychain).
-- Flask (installed from `requirements.txt`).
+- Flask and Mistune (installed from `requirements.txt`).
 
 ## Setup
 
@@ -42,7 +42,7 @@ Start it with the launcher:
 - **Windows**: double-click **`VendLog.bat`**.
 - **macOS**: double-click **`VendLog.command`**. The first time, macOS may block it: right-click it,
   choose **Open**, then **Open** again. If it says permission denied, run `chmod +x VendLog.command`
-  once in Terminal. The first run creates a private `.venv` and installs Flask.
+  once in Terminal. The first run creates a private `.venv` and installs the required packages.
 
 The launcher starts the server and opens
 <http://localhost:8765>. If VendLog is already running it only opens the
@@ -94,9 +94,16 @@ Push before closing VendLog so your colleague gets your work.
 - Click a result to preview it. Text files are paged so large files are not loaded whole.
   Images (png, jpg, gif, webp, bmp, svg) are shown directly, with Fit to window, Actual size and open-in-new-tab.
   PDFs are shown in your browser's built-in PDF viewer (content search skips them).
+  Markdown (`.md`) is formatted with a Source & find option; formatted previews are limited to 5 MB.
+  Embedded resources are blocked in the formatted preview.
+  Video files (mp4, m4v, webm, ogv, mov, mkv, avi, wmv, mpeg, mpg and 3gp) use the browser's player.
+  Playback depends on browser codec support; download the file for another player if needed. Content search skips video.
   Use the find box with prev/next, or go to a line. Text encodings utf-8, utf-16 and cp1252 are detected.
 
 ### Synchronise
+Git transfer progress is shown per phase using Git's object or file counts where available. Some
+operations do not provide counts and show an activity indicator while waiting.
+
 1. **Check GitHub for changes** only looks and updates the status. No files change.
 2. **Pull logs & metadata** downloads your partner's changes. If the same file changed
    on both sides, nothing is changed and you are told which files clash.

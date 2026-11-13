@@ -65,6 +65,9 @@ button.filter.on { background: #2a6; color: #fff; border-color: #185; }
 #up-custom.grow { flex: 1 1 14rem; min-width: 12rem; }
 
 .sync { flex-direction: column; max-width: 760px; }
+.sync-progress { position: sticky; top: 8px; z-index: 2; padding: 8px 12px; border: 1px solid #8ab; border-radius: 6px; background: #eef4ff; }
+.sync-progress label { display: block; font-weight: 600; }
+.sync-progress progress { display: block; width: 100%; margin-top: 6px; }
 .panel { border: 1px solid #ccd; border-radius: 6px; padding: 4px 16px 10px; background: #f8f9fc; }
 .panel dl { display: grid; grid-template-columns: 11rem 1fr; gap: 2px 8px; margin: 6px 0; }
 .panel dt { font-weight: 600; } .panel dd { margin: 0; }
@@ -80,6 +83,7 @@ button.filter.on { background: #2a6; color: #fff; border-color: #185; }
 
 .image-scroll { max-height: calc(100vh - 190px); overflow: auto; border: 1px solid #cbd5e1; background: #f1f5f9; padding: 4px; text-align: center; }
 .pdf-frame { width: 100%; height: calc(100vh - 220px); min-height: 300px; border: 1px solid #cbd5e1; background: #f1f5f9; }
+#pv-video-player { display: block; width: 100%; max-height: calc(100vh - 220px); background: #000; }
 .image-scroll img { display: inline-block; }
 .image-scroll img.fit { max-width: 100%; max-height: calc(100vh - 210px); width: auto; height: auto; object-fit: contain; }
 #pv-meta-box > summary { cursor: pointer; font-weight: 600; margin-bottom: 4px; }

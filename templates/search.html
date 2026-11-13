@@ -61,6 +61,13 @@
         <p class="muted">Changing the machine moves the file to logs/&lt;machine&gt;/ when you save.</p>
       </div>
               </details>
+      <div id="pv-markdown" hidden>
+        <div class="row">
+          <button type="button" id="pv-markdown-rendered">Formatted</button>
+          <button type="button" id="pv-markdown-source">Source &amp; find</button>
+        </div>
+        <iframe id="pv-markdown-frame" class="pdf-frame" title="Formatted Markdown preview" sandbox></iframe>
+      </div>
       <div id="pv-text">
       <div class="row">
         <input id="pv-find" placeholder="Find in this file">
@@ -89,6 +96,16 @@
           <a id="pv-open" target="_blank" rel="noopener">Open in new tab</a>
         </div>
         <div class="image-scroll"><img id="pv-img" alt=""></div>
+      </div>
+      <div id="pv-video" hidden>
+        <div class="row">
+          <a id="pv-video-open" target="_blank" rel="noopener">Open video in new tab</a>
+          <a id="pv-video-download" download>Download for external player</a>
+        </div>
+        <video id="pv-video-player" controls preload="metadata">
+          Your browser cannot play this video. Use the link above to open it.
+        </video>
+        <p id="pv-video-error" class="error" hidden>This video could not be played by your browser. Try opening it in another player.</p>
       </div>
     </div>
   </section>

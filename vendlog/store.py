@@ -14,6 +14,10 @@ MANIFEST_FILE = "vendlog.json"
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
                ".webp": "image/webp", ".bmp": "image/bmp", ".svg": "image/svg+xml"}
 PDF_TYPE = ".pdf"
+VIDEO_TYPES = {".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm",
+               ".ogv": "video/ogg", ".mov": "video/quicktime", ".mkv": "video/x-matroska",
+               ".avi": "video/x-msvideo", ".wmv": "video/x-ms-wmv", ".mpeg": "video/mpeg",
+               ".mpg": "video/mpeg", ".3gp": "video/3gpp"}
 META_FIELDS = ("tags", "machine", "maker", "datetime", "description", "uploaded")
 DEFAULT_MAKERS = ("Fuji Denki", "Sanden", "Panasonic", "JVMA", "UNKNOWN")
 
@@ -111,7 +115,9 @@ class Store:
             "name": p.name,
             "size": st.st_size,
             "kind": ("image" if p.suffix.lower() in IMAGE_TYPES
-                     else "pdf" if p.suffix.lower() == PDF_TYPE else "text"),
+                     else "pdf" if p.suffix.lower() == PDF_TYPE
+                     else "video" if p.suffix.lower() in VIDEO_TYPES
+                     else "markdown" if p.suffix.lower() == ".md" else "text"),
             "modified": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(timespec="seconds"),
             **self.read_meta(p),
         }

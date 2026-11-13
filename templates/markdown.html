@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font: 15px/1.6 system-ui, sans-serif; color: #24292f; padding: 8px 18px; overflow-wrap: anywhere; }
+    pre { overflow: auto; padding: 12px; background: #f1f5f9; }
+    code { font-family: Consolas, monospace; }
+    blockquote { border-left: 4px solid #cbd5e1; margin-left: 0; padding-left: 16px; color: #555; }
+    table { border-collapse: collapse; }
+    th, td { border: 1px solid #cbd5e1; padding: 4px 8px; }
+    img { max-width: 100%; }
+  </style>
+</head>
+<body>{% if error %}<p>{{ error }}</p>{% else %}{{ content }}{% endif %}</body>
+</html>

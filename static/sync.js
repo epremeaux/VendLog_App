@@ -4,20 +4,70 @@ const $ = id => document.getElementById(id);
 let pending = null;
 let busy = false;
 
+async function syncRequest(action, data = {}) {
+  const response = await fetch("/api/sync/run", {
+    method: "POST",
+    headers: { "X-VendLog": "1", "Content-Type": "application/json" },
+    body: JSON.stringify({ ...data, action })
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || response.statusText);
+  }
+  const reader = response.body.getReader(), decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    while (true) {
+      const { value, done } = await reader.read().catch(() => {
+        throw new Error("Lost the sync progress connection. The operation may still be running; check repository status.");
+      });
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line) continue;
+        const event = JSON.parse(line);
+        if (event.progress) {
+          const p = event.progress;
+          if (p.total > 0) {
+            $("sync-progress-bar").max = p.total;
+            $("sync-progress-bar").value = p.current;
+            $("sync-progress-detail").textContent = `${p.phase}: ${p.current} / ${p.total} (current Git phase)`;
+          }
+        }
+        if (event.error) throw new Error(event.error);
+        if (event.result) return event.result;
+      }
+      if (done) throw new Error("Lost the sync progress connection. The operation may still be running; check repository status.");
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 function say(text, isError) {
   const m = $("msg");
   m.textContent = text || "";
   m.className = isError ? "error" : "muted";
 }
 
-async function run(fn) {
+async function run(label, fn) {
   if (busy) return;
   busy = true;
   document.querySelectorAll("button").forEach(b => b.disabled = true);
-  say("Working...");
+  say("");
+  $("sync-progress-label").textContent = label;
+  $("sync-progress-bar").removeAttribute("value");
+  $("sync-progress-detail").textContent = "Waiting for Git progress...";
+  $("sync-progress").hidden = false;
   try { await fn(); }
   catch (e) { say(e.message, true); await refresh(false).catch(() => {}); }
-  finally { busy = false; document.querySelectorAll("button").forEach(b => b.disabled = false); updateLock(); }
+  finally {
+    $("sync-progress").hidden = true;
+    busy = false;
+    document.querySelectorAll("button").forEach(b => b.disabled = false);
+    updateLock();
+  }
 }
 
 function render(st) {
@@ -52,7 +102,7 @@ function render(st) {
 }
 
 async function refresh(fetchRemote) {
-  const st = await api(fetchRemote ? "/api/git/fetch" : "/api/git/status", fetchRemote ? { method: "POST", json: {} } : {});
+  const st = fetchRemote ? await syncRequest("fetch") : await api("/api/git/status");
   render(st);
   if (st.connected && st.remote && !$("repo-url").value) $("repo-url").value = st.remote;
   return st;
@@ -87,8 +137,8 @@ async function loadVersions() {
 
 let appLatest = "";
 
-$("b-check").onclick = () => run(async () => {
-  const r = await api("/api/app/check", { method: "POST", json: {} });
+$("b-check").onclick = () => run("Checking for app updates...", async () => {
+  const r = await syncRequest("app-check");
   appLatest = r.latest_version || "";
   $("b-update").hidden = !r.can_update;
   $("ver-msg").textContent = r.message
@@ -97,19 +147,19 @@ $("b-check").onclick = () => run(async () => {
   say("");
 });
 
-$("b-update").onclick = () => run(async () => {
+$("b-update").onclick = () => run("Updating the app...", async () => {
   if (!confirm("Download the latest app code from GitHub now?\n\nYour logs are not affected. You will need to restart VendLog afterwards.")) return;
-  const r = await api("/api/app/update", { method: "POST", json: {} });
+  const r = await syncRequest("app-update");
   $("b-update").hidden = true;
   $("ver-msg").textContent = r.message;
   $("ver-msg").className = r.restart ? "warn" : "muted";
   say("");
 });
 
-$("b-refresh").onclick = () => run(async () => { await refresh(true); say("Checked GitHub. Status updated; no files were changed."); });
-$("b-pull").onclick = () => run(async () => done(await api("/api/git/pull", { method: "POST", json: {} })));
-$("b-push").onclick = () => run(async () => {
-  done(await api("/api/git/push", { method: "POST", json: { message: $("commit-msg").value } }));
+$("b-refresh").onclick = () => run("Checking GitHub for changes...", async () => { await refresh(true); say("Checked GitHub. Status updated; no files were changed."); });
+$("b-pull").onclick = () => run("Pulling logs and metadata...", async () => done(await syncRequest("pull")));
+$("b-push").onclick = () => run("Committing and pushing logs...", async () => {
+  done(await syncRequest("push", { message: $("commit-msg").value }));
   $("commit-msg").value = "";
 });
 
@@ -128,8 +178,8 @@ function cancel() {
 }
 $("b-cancel").onclick = cancel;
 
-$("b-prepare").onclick = () => run(async () => {
-  const res = await api("/api/git/connect/prepare", { method: "POST", json: { url: $("repo-url").value } });
+$("b-prepare").onclick = () => run("Checking the data repository...", async () => {
+  const res = await syncRequest("prepare", { url: $("repo-url").value });
   pending = res;
   let msg = `This will replace the ${res.local_files} log file(s) currently in your logs folder with the contents of ${res.url}. `
     + "The current folder is kept as a backup (logs.old-...), not deleted.";
@@ -142,10 +192,9 @@ $("b-prepare").onclick = () => run(async () => {
   say("Repository reachable. Confirm to continue.");
 });
 
-$("b-connect").onclick = () => run(async () => {
+$("b-connect").onclick = () => run("Replacing local data...", async () => {
   if (!pending) return;
-  const res = await api("/api/git/connect", { method: "POST",
-    json: { url: pending.url, token: pending.token, confirm: $("confirm-text").value } });
+  const res = await syncRequest("connect", { url: pending.url, token: pending.token, confirm: $("confirm-text").value });
   cancel();
   $("unlock").checked = false;
   done(res);
@@ -153,4 +202,4 @@ $("b-connect").onclick = () => run(async () => {
 
 updateLock();
 loadVersions().catch(() => {});
-run(async () => { await refresh(true).catch(() => refresh(false)); say(""); });
+run("Checking GitHub for changes...", async () => { await refresh(true).catch(() => refresh(false)); say(""); });

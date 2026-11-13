@@ -175,6 +175,14 @@ $("pv-save").onclick = async () => {
         const url = "/api/pdf?path=" + encodeURIComponent(P.path);
         $("pv-pdf-frame").src = url;
         $("pv-pdf-open").href = url;
+      } else if (P.kind === "video") {
+        const url = "/api/video?path=" + encodeURIComponent(P.path);
+        $("pv-video-player").src = url;
+        $("pv-video-open").href = url;
+        $("pv-video-download").href = url;
+      } else if (P.kind === "markdown") {
+        $("pv-markdown-frame").src = "/api/markdown?path=" + encodeURIComponent(P.path);
+        if (!$("pv-text").hidden) await loadWindow(P.offset);
       } else await loadWindow(P.offset);
     }
   } catch (e) {
@@ -195,12 +203,31 @@ async function openFile(f, line) {
   $("pv-name").textContent = f.path;
   showMeta(f);
   const isImage = f.kind === "image", isPdf = f.kind === "pdf";
+  const isVideo = f.kind === "video", isMarkdown = f.kind === "markdown";
   P.kind = f.kind || "text";
-  $("pv-text").hidden = isImage || isPdf;
+  const player = $("pv-video-player");
+  player.pause();
+  player.removeAttribute("src");
+  player.load();
+  $("pv-text").hidden = isImage || isPdf || isVideo || (isMarkdown && !line);
   $("pv-image").hidden = !isImage;
   $("pv-pdf").hidden = !isPdf;
-  if (!isImage && !isPdf) $("pv-meta-box").open = true;
+  $("pv-video").hidden = !isVideo;
+  $("pv-markdown").hidden = !isMarkdown;
+  $("pv-markdown-frame").hidden = !isMarkdown || !!line;
+  if (!isMarkdown) $("pv-markdown-frame").removeAttribute("src");
+  if (!isImage && !isPdf && !isVideo) $("pv-meta-box").open = true;
   if (!isPdf) $("pv-pdf-frame").removeAttribute("src");
+  if (isVideo) {
+    $("pv-meta-box").open = false;
+    const url = "/api/video?path=" + encodeURIComponent(f.path);
+    $("pv-video-error").hidden = true;
+    player.src = url;
+    $("pv-video-open").href = url;
+    $("pv-video-download").href = url;
+    $("pv-info").textContent = fmtSize(f.size) + " \u2022 video";
+    return;
+  }
   if (isPdf) {
     $("pv-meta-box").open = false;
     const url = "/api/pdf?path=" + encodeURIComponent(f.path);
@@ -221,6 +248,13 @@ async function openFile(f, line) {
     img.onload = () => { $("pv-info").textContent = `${img.naturalWidth}\u00d7${img.naturalHeight} px \u2022 ${fmtSize(f.size)}`; };
     img.onerror = () => { $("pv-info").textContent = "This image could not be displayed."; };
     return;
+  }
+  if (isMarkdown) {
+    $("pv-markdown-frame").src = "/api/markdown?path=" + encodeURIComponent(f.path);
+    if (!line) {
+      $("pv-info").textContent = fmtSize(f.size) + " \u2022 Markdown";
+      return;
+    }
   }
   $("pv-find").value = q;
   $("pv-matches").textContent = "";
@@ -321,6 +355,17 @@ $("pv-external").onclick = async () => {
 
 $("pv-fit").onclick = () => { $("pv-img").className = "fit"; };
 $("pv-actual").onclick = () => { $("pv-img").className = ""; };
+$("pv-video-player").onerror = () => { if (P.kind === "video") $("pv-video-error").hidden = false; };
+$("pv-markdown-rendered").onclick = () => {
+  $("pv-text").hidden = true;
+  $("pv-markdown-frame").hidden = false;
+};
+$("pv-markdown-source").onclick = () => {
+  $("pv-text").hidden = false;
+  $("pv-markdown-frame").hidden = true;
+  $("pv-find").value = P.query;
+  loadWindow(0).catch(fail);
+};
 $("pv-find-btn").onclick = () => runFind($("pv-find").value).catch(fail);
 $("pv-find").onkeydown = e => {
   if (e.key !== "Enter") return;

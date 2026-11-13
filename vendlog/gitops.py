@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import threading
 import time
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -21,6 +22,7 @@ from .store import Conflict, StoreError
 TOKEN_TTL = 300
 CONFLICT_CODES = {"DD", "AU", "UD", "UA", "DU", "AA", "UU"}
 _URL_CREDS = re.compile(r"(://)[^/@\s]*:[^/@\s]*@")
+_PROGRESS = re.compile(r"^(?:remote:\s*)?(.+?):\s*\d+%\s*\((\d+)/(\d+)\)")
 
 
 class GitError(StoreError):
@@ -74,15 +76,30 @@ class Git:
         self.before_push = before_push
         self._lock = threading.Lock()
         self._pending: dict | None = None
+        self._progress = threading.local()
+
+    @contextmanager
+    def report_progress(self, callback):
+        self._progress.callback = callback
+        try:
+            yield
+        finally:
+            del self._progress.callback
 
     # ---- plumbing ---------------------------------------------------------
     def _run(self, args, timeout=120, check=True, cwd=None) -> subprocess.CompletedProcess:
         env = dict(os.environ, GIT_TERMINAL_PROMPT="0", LC_ALL="C")
+        callback = getattr(self._progress, "callback", None)
+        if callback and args[0] in ("fetch", "push", "clone", "merge"):
+            args = [args[0], "--progress", *args[1:]]
         cmd = ["git", "-c", "protocol.ext.allow=never", "-c", "core.quotepath=off", *args]
         try:
-            r = subprocess.run(cmd, cwd=str(cwd or self.dir), capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=timeout, env=env,
-                               stdin=subprocess.DEVNULL)
+            if callback and args[0] in ("fetch", "push", "clone", "merge"):
+                r = self._run_progress(cmd, cwd or self.dir, timeout, env, callback)
+            else:
+                r = subprocess.run(cmd, cwd=str(cwd or self.dir), capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", timeout=timeout, env=env,
+                                   stdin=subprocess.DEVNULL)
         except FileNotFoundError:
             raise GitError("git is not installed or not on PATH")
         except subprocess.TimeoutExpired:
@@ -93,6 +110,48 @@ class Git:
                 msg += "\n\nSet your identity once: git config --global user.name \"Your Name\" and git config --global user.email you@example.com"
             raise GitError(msg)
         return r
+
+    def _run_progress(self, cmd, cwd, timeout, env, callback):
+        process = subprocess.Popen(cmd, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   stdin=subprocess.DEVNULL, env=env)
+        stdout, stderr = [], []
+
+        def read_stdout():
+            stdout.append(process.stdout.read())
+
+        def read_stderr():
+            current = bytearray()
+            while True:
+                char = process.stderr.read(1)
+                if not char:
+                    break
+                stderr.append(char)
+                if char in (b"\r", b"\n"):
+                    match = _PROGRESS.match(current.decode("utf-8", errors="replace").strip())
+                    if match:
+                        callback({"phase": match.group(1), "current": int(match.group(2)),
+                                  "total": int(match.group(3))})
+                    current.clear()
+                else:
+                    current.extend(char)
+
+        readers = [threading.Thread(target=read_stdout), threading.Thread(target=read_stderr)]
+        for reader in readers:
+            reader.start()
+        try:
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            raise
+        finally:
+            for reader in readers:
+                reader.join()
+            process.stdout.close()
+            process.stderr.close()
+        return subprocess.CompletedProcess(cmd, process.returncode,
+                                           b"".join(stdout).decode("utf-8", errors="replace"),
+                                           b"".join(stderr).decode("utf-8", errors="replace"))
 
     def _out(self, args, **kw) -> str:
         return self._run(args, **kw).stdout.strip()

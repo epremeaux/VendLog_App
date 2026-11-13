@@ -69,7 +69,7 @@ def search(store: Store, q: str = "", tags: list[str] | None = None, mode: str =
         term_ok = [any(t in h for h in haystack) for t in terms]
 
         hits = []
-        if content and terms and f.get("kind") == "text":
+        if content and terms and f.get("kind") in ("text", "markdown"):
             found, hits = preview.scan_terms(store.resolve(f["path"]), terms)
             term_ok = [ok or t in found for ok, t in zip(term_ok, terms)]
 

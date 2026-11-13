@@ -6,7 +6,7 @@ title VendLog
 set "PY=python"
 where python >nul 2>nul || set "PY=py -3"
 
-%PY% -c "import flask" >nul 2>nul
+%PY% -c "import flask, mistune" >nul 2>nul
 if errorlevel 1 (
   echo Installing required packages...
   %PY% -m pip install -r requirements.txt

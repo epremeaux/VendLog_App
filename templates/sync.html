@@ -2,6 +2,11 @@
 {% block title %}Synchronise - VendLog{% endblock %}
 {% block body %}
 <main class="sync">
+  <div id="sync-progress" class="sync-progress" role="status" hidden>
+    <label id="sync-progress-label" for="sync-progress-bar"></label>
+    <progress id="sync-progress-bar"></progress>
+    <div id="sync-progress-detail" class="muted"></div>
+  </div>
   <section class="panel">
     <h2>Versions</h2>
     <p id="ver-warn" class="warn" hidden></p>
