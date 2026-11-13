@@ -309,27 +309,69 @@ document.getElementById("up-tags").appendChild(upTags.node);
 
 async function upload(input) {
   if (!input.files.length) return;
+  const maxFileBytes = Number(input.dataset.maxFileBytes);
+  const files = [...input.files];
+  const oversized = files.filter(file => file.size > maxFileBytes);
+  const allowed = files.filter(file => file.size <= maxFileBytes);
+  const rejected = document.getElementById("up-rejected");
+  rejected.replaceChildren();
+  rejected.hidden = !oversized.length;
+  if (oversized.length) {
+    rejected.appendChild(el("div", "Not uploaded: these files exceed the 50 MB limit."));
+    const list = el("ul");
+    oversized.forEach(file => list.appendChild(el("li", `${file.name} (${fmtSize(file.size)})`)));
+    rejected.appendChild(list);
+    if (!allowed.length) { input.value = ""; return; }
+    if (!confirm(`${oversized.length} file(s) exceed the 50 MB limit and will not be uploaded.\n`
+                 + `Upload the remaining ${allowed.length} file(s)?`)) {
+      input.value = "";
+      return;
+    }
+  }
   const prefix = uploadPrefix();
   const near = nearDuplicates(document.getElementById("up-machine").value.trim());
   if (near.length && !confirm(`The machine name looks like the existing "${near.join('", "')}".\nUpload anyway and create a separate folder?`)) {
     input.value = "";
     return;
   }
-  const fd = new FormData();
-  fd.append("prefix", prefix);
-  fd.append("machine", document.getElementById("up-machine").value.trim());
-  fd.append("tags", JSON.stringify(upTags.get()));
-  fd.append("captured", document.getElementById("up-date").value);
-  fd.append("maker", document.getElementById("up-maker").value.trim());
-  [...input.files].forEach(file => fd.append("files", file));
+  const batches = [];
+  for (const file of allowed) {
+    let batch = batches[batches.length - 1];
+    if (!batch || batch.size + file.size > 400_000_000) {
+      batch = { files: [], size: 0 };
+      batches.push(batch);
+    }
+    batch.files.push(file);
+    batch.size += file.size;
+  }
+  const machine = document.getElementById("up-machine").value.trim();
+  const tags = JSON.stringify(upTags.get());
+  const captured = document.getElementById("up-date").value;
+  const maker = document.getElementById("up-maker").value.trim();
+  const errors = [];
+  let saved = 0;
   try {
-    const res = await api("/api/files", { method: "POST", body: fd });
-    if (res.errors.length) alert("Not uploaded:\n" + res.errors.map(e => `${e.name}: ${e.error}`).join("\n"));
-    if (res.saved.length) state.current = res.saved[0];
-    await loadFiles();
-    await loadMakers();
-  } catch (e) { fail(e); }
-  input.value = "";
+    for (const batch of batches) {
+      const fd = new FormData();
+      fd.append("prefix", prefix);
+      fd.append("machine", machine);
+      fd.append("tags", tags);
+      fd.append("captured", captured);
+      fd.append("maker", maker);
+      batch.files.forEach(file => fd.append("files", file));
+      const res = await api("/api/files", { method: "POST", body: fd });
+      errors.push(...res.errors);
+      if (!saved && res.saved.length) state.current = res.saved[0];
+      saved += res.saved.length;
+    }
+  } catch (e) {
+    alert(`Upload interrupted after ${saved} file(s) were saved: ${e.message}\nCheck the file list before retrying.`);
+  } finally {
+    if (errors.length) alert("Not uploaded:\n" + errors.map(e => `${e.name}: ${e.error}`).join("\n"));
+    input.value = "";
+    await loadFiles().catch(fail);
+    await loadMakers().catch(fail);
+  }
 }
 
 ["up-machine", "up-custom"].forEach(id => {

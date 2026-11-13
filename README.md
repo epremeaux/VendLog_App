@@ -74,6 +74,7 @@ Push before closing VendLog so your colleague gets your work.
 ### Manage logs
 - **Upload**: choose files, optionally set machine, maker, date, tags and a filename prefix.
   Files are stored in `logs\<machine>\`. Existing files are never overwritten.
+  Files larger than 50 MB (50,000,000 bytes) are listed and skipped; you can upload the remaining files.
 - **Machine** names also select the folder. Near-duplicates (e.g. `Coke Red` vs `coke_red`) are flagged.
 - **Machine maker**: Fuji Denki, Sanden, Panasonic, JVMA, UNKNOWN, or type a new one.
 - **Filter** the list with the block at the top: free text, tag buttons (a file must have all selected tags),

@@ -16,7 +16,7 @@ from markupsafe import Markup
 from vendlog import config, dialog, preview, version
 from vendlog import search as search_mod
 from vendlog.gitops import AppRepo, Git
-from vendlog.store import IMAGE_TYPES, VIDEO_TYPES, Store, StoreError, norm_tags
+from vendlog.store import IMAGE_TYPES, MAX_LOG_FILE_BYTES, VIDEO_TYPES, Store, StoreError, norm_tags
 
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 MAX_MARKDOWN_BYTES = 5 * 1024 * 1024
@@ -69,7 +69,7 @@ def create_app(cfg: dict | None = None) -> Flask:
 
     @app.get("/manage")
     def manage():
-        return render_template("manage.html", page="manage")
+        return render_template("manage.html", page="manage", max_file_bytes=MAX_LOG_FILE_BYTES)
 
     @app.get("/search")
     def search_page():

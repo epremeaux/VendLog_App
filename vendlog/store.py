@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 import json
 import os
 import re
-import shutil
 from pathlib import Path
 
 META_SUFFIX = ".meta.json"
@@ -14,6 +13,7 @@ MANIFEST_FILE = "vendlog.json"
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
                ".webp": "image/webp", ".bmp": "image/bmp", ".svg": "image/svg+xml"}
 PDF_TYPE = ".pdf"
+MAX_LOG_FILE_BYTES = 50_000_000
 VIDEO_TYPES = {".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm",
                ".ogv": "video/ogg", ".mov": "video/quicktime", ".mkv": "video/x-matroska",
                ".avi": "video/x-msvideo", ".wmv": "video/x-ms-wmv", ".mpeg": "video/mpeg",
@@ -175,7 +175,15 @@ class Store:
             raise Conflict(f"'{label}' already exists; rename the file and try again")
         try:
             with open(dest, "xb") as out:  # "x" refuses to overwrite, even in a race
-                shutil.copyfileobj(stream, out, 1024 * 1024)
+                total = 0
+                while True:
+                    chunk = stream.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > MAX_LOG_FILE_BYTES:
+                        raise StoreError("File exceeds the 50 MB upload limit")
+                    out.write(chunk)
         except FileExistsError:
             raise Conflict(f"'{label}' already exists")
         except Exception:

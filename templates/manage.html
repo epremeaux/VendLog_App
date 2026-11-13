@@ -30,8 +30,10 @@
       </div>
       <div class="field"><span>Tags for uploaded files</span><div id="up-tags"></div></div>
       <div class="row">
-        <label class="upload">Upload log(s): <input type="file" id="upload-input" multiple></label>
+        <label class="upload">Upload log(s): <input type="file" id="upload-input" data-max-file-bytes="{{ max_file_bytes }}" multiple></label>
       </div>
+      <div id="up-rejected" class="warn" role="status" hidden></div>
+      <p class="muted">Maximum file size: 50 MB per file.</p>
       <p class="muted" id="up-preview"></p>
     </div>
     </details>

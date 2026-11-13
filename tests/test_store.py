@@ -78,6 +78,37 @@ def test_upload_and_no_overwrite(client, repo):
     assert not (repo / "evil.log").exists()
 
 
+def test_upload_size_limit_mixed_files(client, repo, monkeypatch):
+    from io import BytesIO
+    import vendlog.store as store_module
+    monkeypatch.setattr(store_module, "MAX_LOG_FILE_BYTES", 8)
+    r = client.post("/api/files", headers=H, data={"files": [
+        (BytesIO(b"12345678"), "allowed.log"),
+        (BytesIO(b"123456789"), "oversized.mp4"),
+        (BytesIO(b"ok"), "other.log"),
+    ]})
+    assert [f["name"] for f in r.json["saved"]] == ["allowed.log", "other.log"]
+    assert r.json["errors"] == [{"name": "oversized.mp4", "error": "File exceeds the 50 MB upload limit"}]
+    assert not (repo / "logs" / "oversized.mp4").exists()
+    assert not (repo / "logs" / "oversized.mp4.meta.json").exists()
+
+
+def test_upload_real_50_mb_boundary(tmp_path):
+    from vendlog.store import MAX_LOG_FILE_BYTES
+    assert MAX_LOG_FILE_BYTES == 50_000_000
+    source = tmp_path / "source"
+    with source.open("wb") as f:
+        f.truncate(MAX_LOG_FILE_BYTES)
+    store = Store(tmp_path / "logs")
+    with source.open("rb") as f:
+        assert store.save_upload("exact.log", f)["size"] == 50_000_000
+    with source.open("ab") as f:
+        f.write(b"x")
+    with source.open("rb") as f, pytest.raises(StoreError, match="50 MB"):
+        store.save_upload("too-large.log", f)
+    assert not (store.root / "too-large.log").exists()
+
+
 def test_rename(client, repo):
     r = client.post("/api/rename", json={"path": "a.log", "name": "RED-01_a.log"}, headers=H)
     assert r.json["path"] == "RED-01_a.log" and r.json["tags"] == ["JVMA"]
